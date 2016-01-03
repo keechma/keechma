@@ -1,0 +1,12 @@
+{
+  "name": "ashiba",
+  "version": "1.0.0",
+  "description": "FIXME: Write a one-line description of your library/project.",
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "karma": "^0.13.16",
+    "karma-chrome-launcher": "^0.2.2",
+    "karma-cljs-test": "^0.1.0"
+  }
+}
