@@ -56,15 +56,16 @@
 
 (deftest map->url []
   (do
+    (let [routes (router/expand-routes [["pages/:page" {:page "index"}]])
+          url-1 (router/map->url routes {:page "foo"})
+          url-2 (router/map->url routes {:page "foo" :index "bar"})]
+      (is (= url-1 "pages/foo"))
+      (is (= url-2 "pages/foo?index=bar")))
     (let [routes (router/expand-routes [["pages/:page" {:page "index"}]
                                         ["pages/:page/:foo" {:page "index" :foo "bar"}]])
-          url-1 (router/map->url routes {:page "foo"})
-          url-2 (router/map->url routes {:page "index" :foo "bar"})
-          url-3 (router/map->url routes {:page "foo" :foo "bar" :where "there"})]
-      (is (= url-1 "pages/foo"))
-      (is (= url-2 "pages/foo?index=bar"))
-      (is (= url-3 "pages/foo/?where=there")))
+          url (router/map->url routes {:page "foo" :foo "bar" :where "there"})]
+      (is (= url "pages/foo/?where=there")))
     (let [url (router/map->url nil {:page "foo" :bar "baz" :where "there"})]
-      (is (= url "?page=foo&bar=baz&where=there")))))
+      (is (= url "?bar=baz&page=foo&where=there")))))
 
 
