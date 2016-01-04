@@ -10,7 +10,6 @@
                  [reagent "0.5.0"]
                  [lein-doo "0.1.6"]
                  [secretary "1.2.3"]
-                 [com.cemerick/url "0.1.1"]
                  [funcool/cuerdas "0.7.0"]
                  [com.stuartsierra/component "0.3.1"]]
 

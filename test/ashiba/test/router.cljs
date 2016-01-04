@@ -66,6 +66,10 @@
           url (router/map->url routes {:page "foo" :foo "bar" :where "there"})]
       (is (= url "pages/foo/?where=there")))
     (let [url (router/map->url nil {:page "foo" :bar "baz" :where "there"})]
-      (is (= url "?bar=baz&page=foo&where=there")))))
+      (is (= url "?page=foo&bar=baz&where=there")))))
 
-
+(deftest symmetry []
+  (let [data {:page "=&[]" :nestedArray ["a"] :nested {:a "b"}}
+        url (router/map->url [] data)
+        back-data (router/url->map [] url)]
+    (is (= data (:data back-data)))))

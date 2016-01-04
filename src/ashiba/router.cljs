@@ -1,7 +1,7 @@
 (ns ashiba.router
-  (:require [cemerick.url :as u]
-            [clojure.walk :refer [keywordize-keys]]
+  (:require [clojure.walk :refer [keywordize-keys]]
             [clojure.set :refer [superset? union]]
+            [secretary.core :refer [decode-query-params encode-query-params encode-uri]]
             [cuerdas.core :as str]))
 
 (defn process-route-part [default-keys part]
@@ -27,10 +27,7 @@
   (if (string? route) [route {}] route))
 
 (defn strip-slashes [route]
-  (clojure.string/replace (clojure.string/trim route) #"^/+|/+$" ""))
-
-(defn strip-protocol [url]
-  (subs url 3))
+  (clojure.string/replace (clojure.string/trim (or route "")) #"^/+|/+$" ""))
 
 (defn process-route [[route defaults]]
   (let [parts (clojure.string/split route #"/")
@@ -42,7 +39,7 @@
      :defaults (or defaults {})}))
 
 (defn remove-empty-matches [matches]
-  (apply dissoc matches (for [[k v] matches :when (empty? v)] k)))
+  (apply dissoc matches (for [[k v] matches :when (or (= v "null") (empty? v))] k)))
 
 (defn expand-route [route]
   (let [strip-slashes (fn [[route defaults]] [(strip-slashes route) defaults])]
@@ -70,11 +67,9 @@
         placeholder (str k)
         is-default? (= (get defaults k) val)
         ;; Hack to enforce trailing slash when we have a default value 
-        default-val (if (str/ends-with? url placeholder) "=/=" "")
+        default-val (if (str/ends-with? url placeholder) "-/-" "")
         replacement (if is-default? default-val val)]
     (clojure.string/replace url placeholder replacement)))
-
-
 
 (defn build-url [route data]
   (let [defaults (:defaults route)
@@ -83,10 +78,10 @@
         base-url (reduce (partial add-url-segment defaults data) (:route route) placeholders)]
     (if (empty? query-params)
       base-url
-      (str/replace 
-       ;; Hack to enforce trailing slash when we have a default value 
-       (strip-protocol (str (assoc (u/url base-url) :query query-params)))
-       "=/=" ""))))
+      (str 
+       ;; Hack to enforce trailing slash when we have a default value
+       (clojure.string/replace (encode-uri base-url) "-/-" "")
+       "?" (encode-query-params query-params)))))
 
 (defn route-score [data route]
   (let [matched []
@@ -122,10 +117,12 @@
            end? nil
            :else (recur (inc index))))))))
 
+;; Public API
+
 (defn url->map [processed-routes url]
-  (let [parsed-url (u/url url)
-        path (strip-slashes (:path parsed-url)) 
-        query (remove-empty-matches (keywordize-keys (or (:query parsed-url) {})))
+  (let [[u q] (clojure.string/split url #"\?")
+        path (strip-slashes u) 
+        query (remove-empty-matches (keywordize-keys (decode-query-params (or q ""))))
         ;; Try to match a normal url or a url with "/" appended
         ;; that way we ensure that routes with defaults get matched
         ;; even if the last segment is missing
@@ -139,7 +136,7 @@
   (let [data-keys (set (keys data))
         potential-routes (filter (partial potential-route? data-keys) processed-routes)]
     (if (empty? potential-routes)
-      (strip-protocol (str (assoc (u/url "") :query data)))
+      (str "?" (encode-query-params data))
       (let [sorted-routes (sort-by (fn [r] (- (route-score r))) potential-routes)
             best-match (first sorted-routes)]
         (build-url best-match data)))))
@@ -149,4 +146,3 @@
   (into [] (sort-by (fn [r]
                       (- (count (:placeholders r)))) 
                     (map expand-route routes))))
-
