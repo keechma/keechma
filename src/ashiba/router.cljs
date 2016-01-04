@@ -1,8 +1,10 @@
 (ns ashiba.router
   (:require [clojure.walk :refer [keywordize-keys]]
             [clojure.set :refer [superset? union]]
-            [secretary.core :refer [decode-query-params encode-query-params encode-uri]]
+            [secretary.core :refer [decode-query-params encode-query-params]]
             [cuerdas.core :as str]))
+
+(def encode js/encodeURIComponent)
 
 (defn process-route-part [default-keys part]
   (let [is-placeholder? (= ":" (first part))
@@ -26,8 +28,13 @@
 (defn add-default-params [route]
   (if (string? route) [route {}] route))
 
-(defn strip-slashes [route]
-  (clojure.string/replace (clojure.string/trim (or route "")) #"^/+|/+$" ""))
+(defn strip-slashes
+  ([route]
+   (clojure.string/replace (clojure.string/trim (or route "")) #"^/+|/+$" ""))
+  ([side route]
+   (case side
+     :left (clojure.string/replace (clojure.string/trim (or route "")) #"^/+" "")
+     :right (clojure.string/replace (clojure.string/trim (or route "")) #"/+$" ""))))
 
 (defn process-route [[route defaults]]
   (let [parts (clojure.string/split route #"/")
@@ -57,8 +64,8 @@
                  (assoc m k v)
                  m)) {} map1))
 
-(defn extract-query-param [placeholders m k v]
-  (if-not (contains? placeholders k)
+(defn extract-query-param [default-keys placeholders m k v]
+  (if-not (or (contains? default-keys k) (contains? placeholders k))
     (assoc m k v)
     m))
 
@@ -67,21 +74,19 @@
         placeholder (str k)
         is-default? (= (get defaults k) val)
         ;; Hack to enforce trailing slash when we have a default value 
-        default-val (if (str/ends-with? url placeholder) "-/-" "")
-        replacement (if is-default? default-val val)]
+        default-val (if (str/starts-with? url placeholder) "" "")
+        replacement (if is-default? default-val (encode val))]
     (clojure.string/replace url placeholder replacement)))
 
 (defn build-url [route data]
   (let [defaults (:defaults route)
+        default-keys (set (keys defaults))
         placeholders (:placeholders route)
-        query-params (reduce-kv (partial extract-query-param placeholders) {} data)
+        query-params (reduce-kv (partial extract-query-param default-keys placeholders) {} data)
         base-url (reduce (partial add-url-segment defaults data) (:route route) placeholders)]
     (if (empty? query-params)
-      base-url
-      (str 
-       ;; Hack to enforce trailing slash when we have a default value
-       (clojure.string/replace (encode-uri base-url) "-/-" "")
-       "?" (encode-query-params query-params)))))
+      (if (= "/" base-url) "" base-url)
+      (str base-url "?" (encode-query-params query-params)))))
 
 (defn route-score [data route]
   (let [matched []
@@ -97,7 +102,7 @@
                placeholder-matches
                distinct))))
 
-(defn match-path-with-route [route url] 
+(defn match-path-with-route [route url]
   (let [matches (first (re-seq (:regex route) url))]
     (when-not (nil? matches)
       (zipmap (:placeholders route) (rest matches)))))
@@ -121,13 +126,9 @@
 
 (defn url->map [processed-routes url]
   (let [[u q] (clojure.string/split url #"\?")
-        path (strip-slashes u) 
+        path (if (= u "/") u (strip-slashes :left u)) 
         query (remove-empty-matches (keywordize-keys (decode-query-params (or q ""))))
-        ;; Try to match a normal url or a url with "/" appended
-        ;; that way we ensure that routes with defaults get matched
-        ;; even if the last segment is missing
-        matched-path (or (match-path processed-routes path)
-                         (match-path processed-routes (str path "/")))]
+        matched-path (match-path processed-routes path)]
     (if matched-path
       (assoc matched-path :data (merge query (:data matched-path)))
       {:data query})))
@@ -137,7 +138,7 @@
         potential-routes (filter (partial potential-route? data-keys) processed-routes)]
     (if (empty? potential-routes)
       (str "?" (encode-query-params data))
-      (let [sorted-routes (sort-by (fn [r] (- (route-score r))) potential-routes)
+      (let [sorted-routes (sort-by (fn [r] (- (route-score data r))) potential-routes)
             best-match (first sorted-routes)]
         (build-url best-match data)))))
 
