@@ -1,6 +1,5 @@
-(ns ashiba.test.edb
-  (:require-macros [cljs.test :refer [deftest testing is]])
-  (:require [cljs.test :as t]
+(ns ashiba.test.edb 
+  (:require [cljs.test :refer-macros [deftest is]]
             [ashiba.edb :as edb]
             [ashiba.edb.util :as util]
             [ashiba.edb.relations :as relations]

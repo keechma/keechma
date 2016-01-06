@@ -11,11 +11,14 @@
                  [lein-doo "0.1.6"]
                  [secretary "1.2.3"]
                  [funcool/cuerdas "0.7.0"]
+                 [figwheel-sidecar "0.5.0-1"]
+                 [cider/cider-nrepl "0.10.1"]
                  [com.stuartsierra/component "0.3.1"]]
 
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-figwheel "0.5.0-1"]
-            [lein-doo "0.1.6"]]
+            [lein-doo "0.1.6"]
+            [cider/cider-nrepl "0.10.1"]]
 
   :source-paths ["src"]
 
