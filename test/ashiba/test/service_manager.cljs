@@ -14,14 +14,14 @@
     (stop [_ params state]
       (assoc state :state :stopped)))
 
-(def foo-service (assoc (->FooService) :commands-chan (chan)))
+(def foo-service (assoc (->FooService) :in-chan (chan)))
 
 ;; End Setup -----------------------------------------
 
 (deftest services-actions []
-  (let [running-services {:news {:params {:page 1 :per-page 10} :commands-chan (chan)}
-                          :users {:params true :commands-chan (chan)}
-                          :comments {:params {:news-id 1} :commands-chan (chan)}}
+  (let [running-services {:news {:params {:page 1 :per-page 10} :in-chan (chan)}
+                          :users {:params true :in-chan (chan)}
+                          :comments {:params {:news-id 1} :in-chan (chan)}}
         services {:news {:page 2 :per-page 10}
                   :users true
                   :category {:id 1}
