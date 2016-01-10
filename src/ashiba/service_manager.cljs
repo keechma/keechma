@@ -1,5 +1,5 @@
 (ns ashiba.service-manager
-  (:require [cljs.core.async :refer [<! >! chan close! put! alts!]]
+  (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [ashiba.service])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
 
@@ -23,31 +23,32 @@
                    (assoc m k action)
                    m))) {} service-params))
 
-(defn send-command [chan-name service command-name args]
+(defn send-command-to [service command-name args] 
   (do
-    (put! (chan-name service) [command-name args])
+    (put! (:in-chan service) [command-name args])
     service))
 
-(def send-command-to (partial send-command :in-chan))
-(def send-command-from (partial send-command :out-chan))
+(defn send-command-from-service [out-chan command-name args]
+  (put! out-chan [command-name args]))
 
 (defn send-update
-  ([service update-fn]
-   (send-updates-command service update-fn false))
-  ([service update-fn is-immediate?]
+  ([out-chan update-fn]
+   (send-update out-chan update-fn false))
+  ([out-chan update-fn is-immediate?]
    (let [command-name (if is-immediate? :immediate-update :schedule-update)]
-     (send-command-from service command-name update-fn))))
+     (send-command-from-service out-chan command-name update-fn))))
 
 (defn start-service [app-db-snapshot service-name service service-params extras]
-  (let [service (-> service
-                    (assoc :send-update (partial send-update service))
-                    (assoc :send-command (partial send-command-from service))
+  (let [out-chan (:commands-chan extras)
+        service (-> service 
                     (assoc :params service-params)
                     (assoc :in-chan (chan))
-                    (assoc :out-chan (:main-commands-chan extras))
-                    (assoc :is-running? (partial (:is-service-running? extras) service-name service))) 
+                    (assoc :out-chan out-chan)
+                    (assoc :send-command (partial send-command-from-service out-chan))
+                    (assoc :send-update (partial send-update out-chan))
+                    (assoc :is-running? (partial (:is-service-running? extras) service-name))) 
         app-db (ashiba.service/start service service-params app-db-snapshot)]
-    (ashiba.service/handler (:in-chan service) (:out-chan extras))
+    (ashiba.service/handler service (:in-chan service) (:out-chan service))
     (send-command-to service :start [(:route-params extras)])
     (assoc-in app-db[:running-services service-name] service)))
 
@@ -57,19 +58,22 @@
   (-> (ashiba.service/stop service (:params service) app-db-snapshot)
       (assoc :running-services (dissoc (:running-services app-db-snapshot) service-name))))
 
-(defn restart-service [app-db-snapshot service-name service service-params extras]
+(defn restart-service [app-db-snapshot service-name running-service service service-params extras]
   (-> app-db-snapshot
-      (stop-service service-name service)
-      (start-service service-name service service-params route-params)))
+      (stop-service service-name running-service)
+      (start-service service-name service service-params extras)))
 
-(defn apply-service-change [services services-params commands-chan extras app-db-snapshot service-name action]
+(defn apply-service-change [services services-params extras app-db-snapshot service-name action]
   (let [service (service-name services)
-        service-params (service-name services-params)]
+        service-params (service-name services-params)
+        get-running-service (fn [name] (get-in app-db-snapshot [:running-services name]))] 
     (case action
       :start (start-service app-db-snapshot service-name service service-params extras)
-      :restart (restart-service app-db-snapshot service-name service service-params extras) 
-      :stop (stop-service app-db-snapshot service-name service)
-      :route-changed (send-command-to service :route-changed [route-params]))))
+      :restart (restart-service app-db-snapshot service-name (get-running-service service-name) service service-params extras) 
+      :stop (stop-service app-db-snapshot service-name (get-running-service service-name))
+      :route-changed (do
+                       (send-command-to (get-running-service service-name) :route-changed [(:route-params extras)])
+                       app-db-snapshot))))
 
 (defn apply-services-change [app-db-snapshot services services-params services-actions extras]
   (reduce-kv (partial apply-service-change
@@ -86,7 +90,7 @@
                            services
                            services-params
                            services-actions
-                           {:main-commands-chan commands-chan
+                           {:commands-chan commands-chan
                             :route-params route-params
                             :is-service-running? is-service-running?})))
 
@@ -110,32 +114,33 @@
         [(go
            (while true
              ;; When route changes:
-                           ;;   - send "stop" command to services that will be stopped
+             ;;   - send "stop" command to services that will be stopped
              ;;   - stop services that return nil from their params functions
              ;;   - start services that need to be started
              ;;   - send "start" command to started services
              ;;   - send "route-changed" command to services that were already running
-             (reset! app-db (route-changed (<! route-chan) @app-db commands-chan services is-service-running?))))
+             (let [route-params (<! route-chan)]
+               (reset! app-db (route-changed route-params @app-db commands-chan services is-service-running?)))))
          (go
            (while true
              (let [[command-name command-args] (<! commands-chan)
                    running-services (:running-services @app-db)]
                (cond
-                (= command-name :schedule-update) (swap! scheduled-updates conj (first command-args))
-                (= command-name :immediate-update) (reset! app-db ((first command-args) @app-db))
+                (= command-name :schedule-update) (swap! scheduled-updates conj command-args)
+                (= command-name :immediate-update) (reset! app-db (command-args @app-db))
                 :else (route-command-to-service running-services command-name command-args)))))
          (go
            (while true
              (<! (timeout 1))
-             (let [updates-fns scheduled-updates]
-               (when-not (empty? updates)
+             (let [updates-fns @scheduled-updates]
+               (when-not (empty? updates-fns)
                  (reset! app-db (apply-scheduled-updates @app-db updates-fns))
                  (reset! scheduled-updates [])))))]]
     {:running-chans running-chans
      :stop (fn []
              (let [services (:running-services @app-db)]
-               (map (fn [[_ s]]
-                      (close! (:commands-chan s))) services)
+               (map (fn [[name s]]
+                      (reset! app-db (stop-service @app-db name s))) services)
                (close! commands-chan)
-               (close! routes-chan)
+               (close! route-chan)
                (map close! running-chans)))}))
