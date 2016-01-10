@@ -4,7 +4,7 @@
   (params [this route])
   (start [this params db])
   (stop [this params db])
-  (handler [this read-db command-chan]))
+  (handler [this in-chan out-chan]))
 
 (extend-type js/Object
   IService

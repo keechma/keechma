@@ -1,6 +1,7 @@
 (ns ashiba.test.service-manager
   (:require [cljs.test :refer-macros [deftest is]]
             [ashiba.service :as service]
+            [cljs.core.async :refer [<! >! chan close! put! alts!]]
             [ashiba.service-manager :as service-manager]))
 
 ;; Setup ---------------------------------------------
@@ -13,14 +14,14 @@
     (stop [_ params state]
       (assoc state :state :stopped)))
 
-(def foo-service (->FooService))
+(def foo-service (assoc (->FooService) :commands-chan (chan)))
 
 ;; End Setup -----------------------------------------
 
 (deftest services-actions []
-  (let [running-services {:news {:params {:page 1 :per-page 10}}
-                          :users {:params true}
-                          :comments {:params {:news-id 1}}}
+  (let [running-services {:news {:params {:page 1 :per-page 10} :commands-chan (chan)}
+                          :users {:params true :commands-chan (chan)}
+                          :comments {:params {:news-id 1} :commands-chan (chan)}}
         services {:news {:page 2 :per-page 10}
                   :users true
                   :category {:id 1}
@@ -31,10 +32,11 @@
                           services)]
     (is (= services-actions {:news :restart
                             :comments :stop
-                            :category :start}))))
+                            :category :start
+                            :users :route-changed}))))
 
 (deftest start-service []
-  (let [new-state (service-manager/start-service {:what :that} :foo foo-service {:foo :bar})]
+  (let [new-state (service-manager/start-service {:what :that} :foo foo-service {:foo :bar} (chan) {})]
     (is (= (dissoc new-state :running-services) {:what :that :params {:foo :bar} :runs 1 :state :started}))
     (is (instance? FooService (get-in new-state [:running-services :foo])))
     (is (= (get-in new-state [:running-services :foo :params]) {:foo :bar}))))
@@ -44,8 +46,8 @@
     (is (= new-state {:what :that :state :stopped :running-services {}}))))
 
 (deftest restart-service []
-  (let [started-state (service-manager/start-service {:what :that} :foo foo-service {:start 1})
-        restarted-state (service-manager/restart-service started-state :foo foo-service {:start 2})]
+  (let [started-state (service-manager/start-service {:what :that} :foo foo-service {:start 1} (chan) {})
+        restarted-state (service-manager/restart-service started-state :foo foo-service {:start 2} (chan) {})]
     (is (= (dissoc restarted-state :running-services) {:what :that :params {:start 2} :state :started :runs 2}))
     (is (instance? FooService (get-in restarted-state [:running-services :foo])))
     (is (= (get-in restarted-state [:running-services :foo :params]) {:start 2}))))
