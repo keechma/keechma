@@ -5,10 +5,12 @@
             [ashiba.test.router]
             [ashiba.test.edb]
             [ashiba.test.service]
-            [ashiba.test.service-manager]))
+            [ashiba.test.service-manager]
+            [ashiba.test.ui-component]))
 
 (doo-tests ;;'ashiba.test.app-state
            'ashiba.test.router
            'ashiba.test.edb
            'ashiba.test.service
-           'ashiba.test.service-manager)
+           'ashiba.test.service-manager
+           'ashiba.test.ui-component)
