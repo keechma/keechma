@@ -45,18 +45,16 @@
   (start [_ params state]
     (add-to-log state [:session :start]))
   (handler [this in-chan out-chan]
-    (let [send-update (:send-update this)]
+    (let [send-update service/send-update]
       (go (while true
             (let [[command args] (<! in-chan)]
               (if (= command :immediate-update-timing)
                 (do
-                  (send-update (fn [state]
+                  (send-update this (fn [state]
                                  (add-to-log state [:session :scheduled])))
-                  (send-update (fn [state]
+                  (send-update this (fn [state]
                                  (add-to-log state [:session :immediate])) true))
-                (send-update (fn [state] (add-to-log state [:session :command command])))))))))
-  (stop [_ params state]
-    (add-to-log state [:session :stop])))
+                (send-update this (fn [state] (add-to-log state [:session :command command]))))))))))
 
 ;; End Setup -----------------------------------------
 
@@ -121,9 +119,9 @@
               [:current-user :start]
               [:session :command :route-changed]]
 
+             ;; after immediate update timing
              [[:session :immediate]
-              [:session :scheduled]]
-             ]
+              [:session :scheduled]]]
         get-log (fn [indices]
                   (apply concat (map (fn [i]
                                        (get log i)) indices)))]
@@ -134,15 +132,16 @@
              (<! (timeout 1))
              (is (= (get-log [0]) (:log @app-db)))
              (>! route-chan {:page "current-user" :user-id 1})
-             (<! (timeout 1))
-             (is (= (get-log [0 1]) (:log @app-db)))
+             (<! (timeout 20))
+             (is (= (get-log (range 2)) (:log @app-db)))
              (>! commands-chan [[:session :test-command] "some argument"])
-             (<! (timeout 1))
-             (is (= (get-log [0 1 2]) (:log @app-db)))
+             (<! (timeout 20))
+             (is (= (get-log (range 3)) (:log @app-db)))
              (>! route-chan {:page "current-user" :user-id 2})
-             (<! (timeout 1))
-             (is (= (get-log [0 1 2 3]) (:log @app-db)))
+             (<! (timeout 20))
+             (is (= (get-log (range 4)) (:log @app-db)))
              (>! commands-chan [[:session :immediate-update-timing]])
-             (<! (timeout 1))
-             (is (= (get-log [0 1 2 3 4]) (:log @app-db)))
+             (<! (timeout 20))
+             (is (= (get-log (range 5)) (:log @app-db)))
+             ((:stop @app-instance))
              (done)))))
