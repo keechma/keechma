@@ -21,8 +21,7 @@
                       :current-user {}
                       :user-profile {}}
           system (ui/system components)]
-      (is (= system {:component-deps [:sidebar :users]
-                     :components {:sidebar {:component-deps [:current-user]
+      (is (= system {:components {:sidebar {:component-deps [:current-user]
                                             :components {:current-user {}}}
                                   :users {:component-deps [:user-profile]
                                           :components {:user-profile {}}}}}))))
