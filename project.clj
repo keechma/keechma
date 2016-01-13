@@ -13,6 +13,7 @@
                  [cljsjs/react-with-addons "0.14.3-0"]
                  [funcool/cuerdas "0.7.0"]
                  [lein-doo "0.1.6"]
+                 [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]]
 
   :plugins [[lein-cljsbuild "1.1.1"]

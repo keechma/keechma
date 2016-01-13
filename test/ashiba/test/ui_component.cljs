@@ -13,7 +13,31 @@
   (let [c (tu/new-container!)]
     [c #(tu/unmount! c)]))
 
-(deftest reify-component-test []
+(deftest system []
+  (testing "System can be built"
+    (let [components {:main {:component-deps [:sidebar :users]}
+                      :sidebar {:component-deps [:current-user]}
+                      :users {:component-deps [:user-profile]}
+                      :current-user {}
+                      :user-profile {}}
+          system (ui/system components)]
+      (is (= system {:component-deps [:sidebar :users]
+                     :components {:sidebar {:component-deps [:current-user]
+                                            :components {:current-user {}}}
+                                  :users {:component-deps [:user-profile]
+                                          :components {:user-profile {}}}}}))))
+  (testing "System throws when missing dependencies"
+    (let [incomplete-system {:main {:component-deps [:sidebar]}}]
+      (is (thrown? js/Error (ui/system incomplete-system)))))
+  (testing "System throws when missing :main"
+    (let [incomplete-system {:sidebar {}}]
+      (is (thrown? js/Error (ui/system incomplete-system)))))
+  (testing "System throws when something depends on :main"
+    (let [wrong-system {:main {}
+                        :sidebar {:component-deps [:main]}}]
+      (is (thrown? js/Error (ui/system wrong-system))))))
+
+(deftest system-rendering-test []
   (let [commands-chan (chan)
         outer-component (ui/constructor
                          {:component-deps [:some-component]
@@ -26,15 +50,14 @@
         inner-render (fn [ctx]
                        [:button {:on-click #(ui/send-command ctx :inner-command "inner-arg")}])
         inner-component (ui/constructor {:renderer inner-render})
-        reified-inner (ui/reify-component inner-component
-                                          {:topic :inner
-                                           :commands-chan commands-chan})
-        reified-outer (ui/reify-component outer-component
-                                          {:topic :outer
-                                           :commands-chan commands-chan
-                                           :components {:some-component reified-inner}})
+
+        system (ui/system {:main (assoc outer-component :topic :outer)
+                           :some-component (assoc inner-component :topic :inner)})
+
+        renderer (ui/renderer (assoc system :commands-chan commands-chan))
+ 
         [c unmount] (make-container)
-        _ (reagent/render-component [reified-outer] c)
+        _ (reagent/render-component [renderer] c)
         button-node (sel1 c [:button])
         submit-node (sel1 c [:input])]
     (async done
@@ -45,4 +68,3 @@
              (is (= [[:outer :outer-command] "outer-arg"] (<! commands-chan)))
              (unmount)
              (done)))))
-
