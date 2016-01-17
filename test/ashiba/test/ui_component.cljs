@@ -21,9 +21,10 @@
                       :current-user {}
                       :user-profile {}}
           system (ui/system components)]
-      (is (= system {:components {:sidebar {:component-deps [:current-user]
+      (is (= system {:component-deps []
+                     :components {:sidebar {:component-deps []
                                             :components {:current-user {}}}
-                                  :users {:component-deps [:user-profile]
+                                  :users {:component-deps []
                                           :components {:user-profile {}}}}}))))
   (testing "System throws when missing dependencies"
     (let [incomplete-system {:main {:component-deps [:sidebar]}}]
@@ -35,6 +36,33 @@
     (let [wrong-system {:main {}
                         :sidebar {:component-deps [:main]}}]
       (is (thrown? js/Error (ui/system wrong-system))))))
+
+(deftest resolve-dep []
+  (= (ui/resolve-component-dep {:component-deps [:sidebar]} {:is-sidebar? true})
+     {:component-deps []
+      :components {:sidebar {:is-sidebar? true}}})
+  (= (ui/resolve-subscription-dep {:subscription-deps [:current-user]} {:current-user :foo-bar})
+     {:subscription-deps []
+      :subscriptions {:current-user :foo-bar}}))
+
+(deftest nesting-systems-partially-resolving-deps []
+  (let [system-a {:main {:component-deps [:menu :logout-button]}
+                  :menu {:is-menu? true}
+                  :logout-button {:is-logout-button? true}}
+        system-b {:main {:component-deps [:layout :footer :sidebar]}
+                  :layout (ui/resolve-component-dep
+                           {:component-deps [:main-panel]}
+                           :main-panel {:is-main-panel? true})
+                  :sidebar (ui/system system-a)
+                  :footer {}}]
+    (= (ui/system system-b)
+       {:component-deps []
+        :components {:layout {:component-deps []
+                              :components {:main-panel {:is-main-panel? true}}}
+                     :sidebar {:component-deps []
+                               :components {:menu {:is-menu? true}
+                                            :logout-button {:is-logout-button? true}}} 
+                     :footer {}}})))
 
 (deftest system-rendering-test []
   (let [commands-chan (chan)

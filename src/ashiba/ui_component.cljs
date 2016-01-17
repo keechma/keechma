@@ -1,7 +1,8 @@
 (ns ashiba.ui-component
   (:require [cljs.core.async :refer [put!]]
             [com.stuartsierra.dependency :as dep]
-            [ashiba.util :as util]))
+            [ashiba.util :as util]
+            [clojure.set :as set]))
 
 (defn component-dep-graph [components]
   (reduce-kv (fn [graph k v]
@@ -26,8 +27,18 @@
             missing-deps (missing-component-deps components)]  
         (if-not (empty? missing-deps)
           (throw (js/Error (str "Missing dependencies " (clojure.string/join ", " missing-deps) " for component " component-key)))
-          (assoc component :components components)))
+          (-> component
+              (assoc :components components)
+              (assoc :component-deps []))))
       component)))
+
+(defn resolve-dep [dep-kw coll-kw component key component-dep]
+  (-> component
+      (assoc-in [coll-kw key] component-dep)
+      (assoc dep-kw (util/without (dep-kw component) key))))
+
+(def resolve-subscription-dep (partial resolve-dep :subscription-deps :subscriptions))
+(def resolve-component-dep (partial resolve-dep :component-deps :components))
 
 (defn resolved-system [components sorted-keys]
   (reduce (fn [system key]
@@ -41,7 +52,7 @@
     (throw (js/Error "System must have a :main component!"))
     (let [graph (component-dep-graph components)
           sorted-keys (dep/topo-sort graph)]
-      (dissoc (:main (resolved-system components sorted-keys)) :component-deps))))
+      (:main (resolved-system components sorted-keys)))))
 
 (defprotocol IUIComponent  
   (url [this params])

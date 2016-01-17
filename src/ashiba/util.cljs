@@ -7,3 +7,7 @@
   "true if seq contains elm"
   [seq elm]  
   (some #(= elm %) seq))
+
+(defn without [list val]
+  (into [] (remove (fn [ls-val]
+                     (= val ls-val)) list)))
