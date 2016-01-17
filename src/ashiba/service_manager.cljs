@@ -75,7 +75,7 @@
         services-params (reduce-kv (fn [m k service]
                                      (assoc m k (service-params route-params service))){} services)
         services-actions (services-actions running-services services-params)] 
-    (apply-services-change app-db-snapshot
+    (apply-services-change (assoc app-db-snapshot :route route-params)
                            services
                            services-params
                            services-actions

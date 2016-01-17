@@ -51,14 +51,16 @@
                   :logout-button {:is-logout-button? true}}
         system-b {:main {:component-deps [:layout :footer :sidebar]}
                   :layout (ui/resolve-component-dep
-                           {:component-deps [:main-panel]}
+                           {:component-deps [:main-panel :filter-bar]}
                            :main-panel {:is-main-panel? true})
                   :sidebar (ui/system system-a)
+                  :filter-bar {:is-filter-bar? true}
                   :footer {}}]
     (= (ui/system system-b)
        {:component-deps []
         :components {:layout {:component-deps []
-                              :components {:main-panel {:is-main-panel? true}}}
+                              :components {:main-panel {:is-main-panel? true}
+                                           :filter-bar {:is-filter-bar? true}}}
                      :sidebar {:component-deps []
                                :components {:menu {:is-menu? true}
                                             :logout-button {:is-logout-button? true}}} 

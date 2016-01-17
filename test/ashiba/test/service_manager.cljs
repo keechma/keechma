@@ -56,9 +56,6 @@
                                  (add-to-log state [:session :immediate])) true))
                 (send-update this (fn [state] (add-to-log state [:session :command command]))))))))))
 
-
-
-
 ;; End Setup -----------------------------------------
 
 (deftest services-actions []
