@@ -12,7 +12,8 @@
 (defn app-db []
   (atom {:route {}
          :entity-db {}
-         :kv {}}))
+         :kv {}
+         :internal {}}))
 
 (defn default-config []
   {:routes []

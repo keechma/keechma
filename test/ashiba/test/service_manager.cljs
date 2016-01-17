@@ -77,21 +77,21 @@
 
 (deftest start-service []
   (let [new-state (service-manager/start-service {:what :that} :foo foo-service {:foo :bar} {:commands-chan (chan)})]
-    (is (= (dissoc new-state :running-services) {:what :that :params {:foo :bar} :runs 1 :state :started}))
-    (is (instance? FooService (get-in new-state [:running-services :foo])))
-    (is (= (get-in new-state [:running-services :foo :params]) {:foo :bar}))))
+    (is (= (dissoc new-state :internal) {:what :that :params {:foo :bar} :runs 1 :state :started}))
+    (is (instance? FooService (get-in new-state [:internal :running-services :foo])))
+    (is (= (get-in new-state [:internal :running-services :foo :params]) {:foo :bar}))))
 
 (deftest stop-service [] 
-  (let [new-state (service-manager/stop-service {:what :that :running-services {:foo foo-service}} :foo foo-service)]
-    (is (= new-state {:what :that :state :stopped :running-services {}}))))
+  (let [new-state (service-manager/stop-service {:what :that :internal {:running-services {:foo foo-service}}} :foo foo-service)]
+    (is (= new-state {:what :that :state :stopped :internal {:running-services {}}}))))
 
 (deftest restart-service []
   (let [started-state (service-manager/start-service {:what :that} :foo foo-service {:start 1} {:commands-chan (chan)})
-        started-service (get-in started-state [:running-services :foo])
+        started-service (get-in started-state [:internal :running-services :foo])
         restarted-state (service-manager/restart-service started-state :foo started-service foo-service {:start 2} {:commands-chan (chan)})]
-    (is (= (dissoc restarted-state :running-services) {:what :that :params {:start 2} :state :started :runs 2}))
-    (is (instance? FooService (get-in restarted-state [:running-services :foo])))
-    (is (= (get-in restarted-state [:running-services :foo :params]) {:start 2}))))
+    (is (= (dissoc restarted-state :internal) {:what :that :params {:start 2} :state :started :runs 2}))
+    (is (instance? FooService (get-in restarted-state [:internal :running-services :foo])))
+    (is (= (get-in restarted-state [:internal :running-services :foo :params]) {:start 2}))))
 
 (deftest app-state []
   (let [route-chan (chan)
