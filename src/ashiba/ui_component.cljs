@@ -54,6 +54,11 @@
           sorted-keys (dep/topo-sort graph)]
       (:main (resolved-system components sorted-keys)))))
 
+(defn component->renderer [parent component]
+  (renderer (-> component 
+                (assoc :commands-chan (:commands-chan parent))
+                (assoc :url-fn (or (:url-fn component) (:url-fn parent))))))
+
 (defprotocol IUIComponent  
   (url [this params])
   (subscription [this name])
@@ -69,14 +74,15 @@
   (subscription [this name]
     (get-in this [:subscriptions name]))
   (component [this name]
-    (let [component (get-in this [:components name])]
-      (renderer (-> component 
-                    (assoc :commands-chan (:commands-chan this))
-                    (assoc :url-fn (or (:url-fn component) (:url-fn this)))))))
+    (get-in this [:components name]))
   (send-command [this command args]
     (put! (:commands-chan this) [[(:topic this) command] args]))
   (renderer [this]
-    (partial (:renderer this) this)))
+    (let [child-components (:components this)
+          child-renderers (reduce-kv (fn [c k v]
+                                       (assoc c k (component->renderer this v)))
+                                     child-components child-components)]
+      (partial (:renderer this) (assoc this :components child-renderers)))))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
