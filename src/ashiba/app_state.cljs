@@ -55,11 +55,11 @@
 
 (defn render-to-element! [state]
   (let [main-component (-> (ui/system (:components state))
-                           (assoc :commands-chan (:commands-chan state))
-                           (assoc :url-fn (partial router/map->url (:routes state)))
-                           (assoc :current-route (fn []
-                                                   (:route (deref (:app-state state)))))
-                           (ui/renderer))]
+                           (partial ui/component->renderer
+                                    {:commands-chan (:commands-chan state)
+                                     :url-fn (partial router/map->url (:routes state))
+                                     :current-route-fn (fn []
+                                                         (:route (deref (:app-state state))))}))]
     (reagent/render-component (:html-element state) main-component)
     (add-stop-fn state (fn [_] (unmount-component-at-node (:html-element state))))))
 
@@ -73,7 +73,6 @@
                          (do
                            ((:stop manager))
                            s)))))
-
 
 (defn start! [config]
   (let [config (merge (default-config) config)]

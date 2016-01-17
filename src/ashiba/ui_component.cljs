@@ -57,20 +57,25 @@
 (defn component->renderer [parent component]
   (renderer (-> component 
                 (assoc :commands-chan (:commands-chan parent))
-                (assoc :url-fn (or (:url-fn component) (:url-fn parent))))))
+                (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
+                (assoc :current-route-fn (:current-route-fn parent)))))
 
 (defprotocol IUIComponent  
   (url [this params])
   (subscription [this name])
   (component [this name])
   (send-command [this command args])
-  (renderer [this]))
+  (renderer [this])
+  (current-route [this]))
 
 (extend-type js/Object
   IUIComponent
   (url [this params]
     (let [url-fn (:url-fn this)]
       (url-fn params)))
+  (current-route [this]
+    (let [current-route-fn (:current-route-fn this)]
+      (current-route-fn)))
   (subscription [this name]
     (get-in this [:subscriptions name]))
   (component [this name]
