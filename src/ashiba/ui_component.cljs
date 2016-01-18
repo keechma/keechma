@@ -68,7 +68,7 @@
   (renderer [this])
   (current-route [this]))
 
-(extend-type js/Object
+(extend-type default
   IUIComponent
   (url [this params]
     (let [url-fn (:url-fn this)]

@@ -10,7 +10,7 @@
   (send-update [this updater-fn] [this updater-fn immediate?])
   (is-running? [this]))
 
-(extend-type js/Object
+(extend-type default
   IService
   (params [_ route] route)
   (start [_ params db] db)
@@ -29,4 +29,3 @@
   (is-running? [this]
     (let [currently-running-service (:currently-running-service this)]
       (identical? this (currently-running-service)))))
-
