@@ -4,6 +4,8 @@
             [ashiba.util :as util]
             [clojure.set :as set]))
 
+(declare component->renderer)
+
 (defn component-dep-graph [components]
   (reduce-kv (fn [graph k v]
                (if-not (fn? v)
@@ -54,11 +56,7 @@
           sorted-keys (dep/topo-sort graph)]
       (:main (resolved-system components sorted-keys)))))
 
-(defn component->renderer [parent component]
-  (renderer (-> component 
-                (assoc :commands-chan (:commands-chan parent))
-                (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
-                (assoc :current-route-fn (:current-route-fn parent)))))
+
 
 (defprotocol IUIComponent  
   (url [this params])
@@ -92,6 +90,11 @@
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
 
+(defn component->renderer [parent component]
+  (renderer (-> component 
+                (assoc :commands-chan (:commands-chan parent))
+                (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
+                (assoc :current-route-fn (:current-route-fn parent)))))
 
 (defn constructor [opts]
   (let [defaults {:component-deps []

@@ -1,5 +1,6 @@
 (ns ashiba.core
-  (:require [reagent.core :as reagent :refer [atom]]))
+  (:require [reagent.core :as reagent :refer [atom]]
+            [ashiba.app-state]))
 
 (enable-console-print!)
 

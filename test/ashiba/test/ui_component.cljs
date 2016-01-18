@@ -1,9 +1,9 @@
 (ns ashiba.test.ui-component
   (:require [cljs.test :refer-macros [deftest testing is use-fixtures async]]
+            [reagent.core :as reagent]
             [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
-            [reagent.core :as reagent]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [ashiba.ui-component :as ui])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))

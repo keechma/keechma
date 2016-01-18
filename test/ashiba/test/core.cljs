@@ -12,5 +12,6 @@
            'ashiba.test.router
            'ashiba.test.edb
            'ashiba.test.service
+           'ashiba.test.ui-component
            'ashiba.test.service-manager
-           'ashiba.test.ui-component)
+          )
