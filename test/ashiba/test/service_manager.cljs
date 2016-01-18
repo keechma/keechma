@@ -1,6 +1,7 @@
 (ns ashiba.test.service-manager
   (:require [cljs.test :refer-macros [deftest is async]]
             [ashiba.service :as service]
+            [ashiba.util :refer [animation-frame]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [ashiba.service-manager :as service-manager])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
@@ -129,19 +130,19 @@
            (go
              (reset! app-instance (service-manager/start route-chan commands-chan app-db services))
              (>! route-chan {:page "users"})
-             (<! (timeout 1))
+             (<! (animation-frame 2))
              (is (= (get-log [0]) (:log @app-db)))
              (>! route-chan {:page "current-user" :user-id 1})
-             (<! (timeout 20))
+             (<! (animation-frame 2))
              (is (= (get-log (range 2)) (:log @app-db)))
              (>! commands-chan [[:session :test-command] "some argument"])
-             (<! (timeout 20))
+             (<! (animation-frame 2))
              (is (= (get-log (range 3)) (:log @app-db)))
              (>! route-chan {:page "current-user" :user-id 2})
-             (<! (timeout 20))
+             (<! (animation-frame 2))
              (is (= (get-log (range 4)) (:log @app-db)))
              (>! commands-chan [[:session :immediate-update-timing]])
-             (<! (timeout 20))
+             (<! (animation-frame 2))
              (is (= (get-log (range 5)) (:log @app-db)))
              ((:stop @app-instance))
              (done)))))

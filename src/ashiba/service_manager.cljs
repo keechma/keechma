@@ -1,21 +1,8 @@
 (ns ashiba.service-manager
   (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
+            [ashiba.util :refer [animation-frame]]
             [ashiba.service])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
-
-(defn animation-frame
-  "Return a channel which will close on the nth next animation frame."
-  ([] (animation-frame 1))
-  ([n] (animation-frame n (chan 1)))
-  ([n out]
-     (js/window.requestAnimationFrame
-      (fn [timestamp]
-        (if (= n 1)
-          (do
-            (put! out timestamp)
-            (close! out))
-          (animation-frame (dec n) out))))
-     out))
 
 (defn service-params [route-params service]
   (ashiba.service/params service route-params))
