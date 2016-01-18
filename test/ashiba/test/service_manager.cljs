@@ -47,7 +47,7 @@
     (add-to-log state [:session :start]))
   (handler [this in-chan out-chan]
     (let [send-update service/send-update]
-      (go (while true
+      (go (loop []
             (let [[command args] (<! in-chan)]
               (if (= command :immediate-update-timing)
                 (do
@@ -55,7 +55,8 @@
                                  (add-to-log state [:session :scheduled])))
                   (send-update this (fn [state]
                                  (add-to-log state [:session :immediate])) true))
-                (send-update this (fn [state] (add-to-log state [:session :command command]))))))))))
+                (send-update this (fn [state] (add-to-log state [:session :command command]))))
+              (when command (recur))))))))
 
 ;; End Setup -----------------------------------------
 

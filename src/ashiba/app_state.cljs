@@ -1,6 +1,5 @@
 (ns ashiba.app-state
   (:require [reagent.core :as reagent :refer [atom cursor]]
-            [reagent.dom :refer [unmount-component-at-node]]
             [cljs.core.async :refer [put! close! chan timeout]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
@@ -24,10 +23,10 @@
    :routes-chan (chan)
    :route-prefix "#!"
    :commands-chan (chan)
-   :app-state (app-db)
+   :app-db (app-db)
    :components {}
    :services {}
-   :html-element []
+   :html-element nil
    :stop-fns []})
 
 (defn add-stop-fn [state stop-fn]
@@ -40,33 +39,48 @@
   (let [routes-chan (:routes-chan state)
         route-prefix (:route-prefix state)
         routes (:routes state)
-        h (History.)
+        ;; Always try to use existing elements for goog.History. That way 
+        ;; page won't be erased when refreshed in development
+        ;; https://groups.google.com/forum/#!topic/closure-library-discuss/0vKRKfJPK9c
+        h (History. false nil (.getElementById js/document "history_state0") (.getElementById js/document "history_iframe0")) 
+        ;; Clean this when HTML5 History API will be implemented
+        ;; (subs (.. js/window -location -hash) 2) removes #! from the start of the route
+        current-route-params (router/url->map routes (subs (.. js/window -location -hash) 2))
         listener (fn [e]
-                   (let [clean-route (subs (.-token e) (count route-prefix))
-                         route-params (router/url->map routes clean-route)]
+                   ;; Clean this when HTML5 History API will be implemented
+                   ;; (subs (.-token e) 1) Removes ! from the start of the route
+                   (let [clean-route (subs (.-token e) 1) 
+                       route-params (router/url->map routes clean-route)]
                      (put! routes-chan route-params)))]
-    (events/listen h EventType/Navigate listener)
+    (events/listen h EventType/NAVIGATE listener)
     (doto h (.setEnabled true))
-    (add-stop-fn state (fn [_] (events/unlisten h EventType/Navigate listener)))))
+    (put! routes-chan current-route-params)
+    (add-stop-fn state (fn [_]
+                         (events/unlisten h EventType/NAVIGATE listener)))))
 
 (defn render-to-element! [state]
   (let [reify-main-component
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
-                  :url-fn (partial router/map->url (:routes state))
+                  :url-fn (fn [params]
+                            ;; Clean this when HTML5 History API will be implemented
+                            (str "#!" (router/map->url (:routes state) params)))
+                  :app-db (:app-db state) 
                   :current-route-fn (fn []
-                                      (:route (deref (:app-state state))))})
+                                      (:route (deref (:app-db state))))})
         main-component (-> (ui/system (:components state))
-                           (reify-main-component))] 
-    (reagent/render-component [main-component] (:html-element state))
-    (add-stop-fn state (fn [_] (unmount-component-at-node (:html-element state))))))
+                           (reify-main-component))
+        container (:html-element state)] 
+    (reagent/render-component [main-component] container) 
+    (add-stop-fn state (fn [s] 
+                         (reagent/unmount-component-at-node container)))))
 
 (defn start-services [state]
   (let [services (:services state)
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
-        app-state (:app-state state)
-        manager (service-manager/start routes-chan commands-chan app-state services)]
+        app-db (:app-db state)
+        manager (service-manager/start routes-chan commands-chan app-db services)]
     (add-stop-fn state (fn [s]
                          (do
                            ((:stop manager))
@@ -92,10 +106,7 @@
    (let [routes-chan (:routes-chan config)
          commands-chan (:commands-chan config)]
      (go
-       (<! (timeout 1))
        (doseq [stop-fn (:stop-fns config)] (stop-fn config))
-       (<! (timeout 1))
        (close! commands-chan)
-       (<! (timeout 1))
        (close! routes-chan)
        (done)))))

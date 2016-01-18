@@ -56,13 +56,11 @@
           sorted-keys (dep/topo-sort graph)]
       (:main (resolved-system components sorted-keys)))))
 
-
-
 (defprotocol IUIComponent  
   (url [this params])
   (subscription [this name])
   (component [this name])
-  (send-command [this command args])
+  (send-command [this command] [this command args])
   (renderer [this])
   (current-route [this]))
 
@@ -75,17 +73,25 @@
     (let [current-route-fn (:current-route-fn this)]
       (current-route-fn)))
   (subscription [this name]
-    (get-in this [:subscriptions name]))
+    ((get-in this [:subscriptions name])))
   (component [this name]
     (get-in this [:components name]))
-  (send-command [this command args]
-    (put! (:commands-chan this) [[(:topic this) command] args]))
+  (send-command
+    ([this command]
+     (send-command this command nil))
+    ([this command args]
+     (put! (:commands-chan this) [[(:topic this) command] args])))
   (renderer [this]
-    (let [child-components (:components this)
-          child-renderers (reduce-kv (fn [c k v]
+    (let [child-renderers (reduce-kv (fn [c k v]
                                        (assoc c k (component->renderer this v)))
-                                     child-components child-components)]
-      (partial (:renderer this) (assoc this :components child-renderers)))))
+                                     {} (:components this))
+          subscriptions (reduce-kv (fn [s k v]
+                                     (assoc s k (partial v (:app-db this))))
+                                   {} (:subscriptions this))]
+      (partial (:renderer this)
+               (-> this
+                   (assoc :subscriptions subscriptions)
+                   (assoc :components child-renderers))))))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
@@ -94,7 +100,8 @@
   (renderer (-> component 
                 (assoc :commands-chan (:commands-chan parent))
                 (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
-                (assoc :current-route-fn (:current-route-fn parent)))))
+                (assoc :current-route-fn (:current-route-fn parent))
+                (assoc :app-db (:app-db parent)))))
 
 (defn constructor [opts]
   (let [defaults {:component-deps []
