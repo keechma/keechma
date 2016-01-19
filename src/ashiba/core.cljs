@@ -16,19 +16,18 @@
   (params [_ route-params]
     (or (get-in route-params [:data :message]) "Hello!"))
   (start [_ params app-db]
-    (assoc-in app-db [:kw :message] params))
+    (assoc-in app-db [:kv :message] params))
   (handler [this in-chan out-chan]
     (go 
       (loop [count 0]
         (let [[command args] (<! in-chan)]
           (when (= command :some-command)
-            (service/send-update this (fn [app-db]
-                                        (assoc-in app-db [:kw :message] (str "Hello #" count))) true))
+            (service/send-update this #(assoc-in % [:kv :message] (str "Hello #" count))))
           (when command (recur (inc count))))))))
 
 (defn message [app-db]
   (reaction
-   (get-in @app-db [:kw :message])))
+   (get-in @app-db [:kv :message])))
 
 (defn main-renderer [ctx]
   [:h1
