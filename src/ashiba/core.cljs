@@ -33,27 +33,29 @@
   [:h1
    "MESSAGE: "
    @(ui/subscription ctx :message)
+   [:br]
    [:a {:href (ui/url ctx {:baz "qux"})} "Click Here"]
+   [:br]
+   [:a {:href (ui/url ctx {:message "Or Here"})} "Or here"]
+   [:br]
    [:button {:on-click #(ui/send-command ctx :some-command)} "Send Command"]])
 
 (def main-component (ui/constructor {:renderer main-renderer 
                                      :subscription-deps [:message]}))
 
-(def app-definition {:services {:hello (->HelloWorld)}
+(def app-definition {:html-element (.getElementById js/document "app")
+                     :services {:hello (->HelloWorld)}
                      :components {:main (-> main-component
                                             (assoc :topic :hello)
                                             (ui/resolve-subscription-dep :message message))}})
 
 (defn start-app! []
-  (reset! running-app (app-state/start!
-                       (assoc app-definition
-                         :html-element (.getElementById js/document "app")))))
+  (reset! running-app (app-state/start! app-definition)))
 
 (defn restart-app! []
   (let [current @running-app]
     (if current
-      (do 
-        (app-state/stop! current start-app!))
+      (app-state/stop! current start-app!)
       (start-app!))))
  
 (restart-app!)
