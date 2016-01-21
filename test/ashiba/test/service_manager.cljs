@@ -37,14 +37,22 @@
     (:user-id route-params))
   (start [_ params state]
     (add-to-log state [:current-user :start]))
-  (stop [_ params state]
-    (add-to-log state [:current-user :stop])))
+  (handler [this app-db in-chan out-chan]
+    (go
+      (let [[command args] (<! in-chan)]
+        (reset! app-db (add-to-log @app-db [:users :command command])))))
+  (stop [this params state]
+    (do
+      (service/execute this :stop)
+      (add-to-log state [:current-user :stop]))))
 
 (defrecord SessionService []
   service/IService
   (params [_ _] true)
-  (start [_ params state]
-    (add-to-log state [:session :start]))
+  (start [this params state]
+    (do
+      (service/execute this :start) 
+      (add-to-log state [:session :start])))
   (handler [this app-db in-chan out-chan]
     (go (loop []
           (let [[command args] (<! in-chan)]
@@ -97,7 +105,7 @@
                   :session (->SessionService)}
         app-instance (atom nil)
         log [;; first route
-             [[:users :start]
+             [[:users :start] 
               [:session :start]
               [:session :command :start]]
 
@@ -112,6 +120,11 @@
              ;; third route
              [[:current-user :stop]
               [:current-user :start]
+              ;; I would expect this to be earlier in the log,
+              ;; but it seems that because of the core.async timing
+              ;; it ends here. Doesn't matter though, it's important that
+              ;; the command was called.
+              [:users :command :stop]
               [:session :command :route-changed]]]
         get-log (fn [indices]
                   (apply concat (map (fn [i]

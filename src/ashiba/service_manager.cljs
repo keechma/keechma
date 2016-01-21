@@ -38,18 +38,14 @@
                     (assoc :currently-running-service (partial (:currently-running-service extras)
                                                                service-name))) 
         app-db (ashiba.service/start service service-params app-db-snapshot)]
-    (ashiba.service/handler service (:app-db extras) (:in-chan service) (:out-chan service))
-    (send-command-to service :start [(:route-params extras)])
+    (ashiba.service/handler service (:app-db extras) (:in-chan service) (:out-chan service)) 
     (assoc-in app-db [:internal :running-services service-name] service)))
 
-(defn stop-service [app-db-snapshot service-name service]
-  (send-command-to service :stop [])
-  (let [app-db-with-stopped-service 
-        (-> (ashiba.service/stop service (:params service) app-db-snapshot)
-            (assoc-in [:internal :running-services]
-                      (dissoc (get-in app-db-snapshot [:internal :running-services]) service-name)))]
+(defn stop-service [app-db-snapshot service-name service] 
+  (let [app-db-with-stopped-service (ashiba.service/stop service (:params service) app-db-snapshot)]
     (close! (:in-chan service))
-    app-db-with-stopped-service))
+    (assoc-in app-db-with-stopped-service [:internal :running-services]
+              (dissoc (get-in app-db-snapshot [:internal :running-services]) service-name))))
 
 (defn restart-service [app-db-snapshot service-name running-service service service-params extras]
   (-> app-db-snapshot
