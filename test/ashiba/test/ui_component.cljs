@@ -97,3 +97,4 @@
              (is (= [[:outer :outer-command] "outer-arg"] (<! commands-chan)))
              (unmount)
              (done)))))
+

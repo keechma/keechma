@@ -29,5 +29,4 @@
        (put! out-chan [command-name args])
        this)))
   (is-running? [this]
-    (let [currently-running-controller (:currently-running-controller this)]
-      (identical? this (currently-running-controller)))))
+    (= this ((:running this)))))

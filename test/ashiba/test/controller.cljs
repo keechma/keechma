@@ -5,15 +5,15 @@
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 
 
-(defrecord FooController [out-chan currently-running-controller]
+(defrecord FooController [out-chan running name]
   controller/IController)
 
 (deftest controller-default-behavior []
   (let [out-chan (chan)
-        controller-cache (atom nil)
-        currently-running-controller (fn [] @controller-cache)
-        foo-controller (->FooController out-chan currently-running-controller)]
-    (reset! controller-cache foo-controller)
+        app-db (atom {})
+        running (fn [] (get-in @app-db [:internal :running-controllers :foo]))
+        foo-controller (->FooController out-chan running :foo)]
+    (reset! app-db {:internal {:running-controllers {:foo foo-controller}}})
     (is (controller/is-running? foo-controller))
     (controller/send-command foo-controller :command-name [:command-args])
     (async done

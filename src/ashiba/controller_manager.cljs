@@ -29,61 +29,73 @@
     (put! (:in-chan controller) [command-name args])
     controller))
 
-(defn start-controller [app-db-snapshot controller-name controller controller-params extras]
-  (let [out-chan (:commands-chan extras)
-        controller (-> controller 
-                    (assoc :params controller-params)
-                    (assoc :in-chan (chan))
-                    (assoc :out-chan out-chan)
-                    (assoc :currently-running-controller (partial (:currently-running-controller extras)
-                                                               controller-name))) 
-        app-db (ashiba.controller/start controller controller-params app-db-snapshot)]
-    (ashiba.controller/handler controller (:app-db extras) (:in-chan controller) (:out-chan controller)) 
-    (assoc-in app-db [:internal :running-controllers controller-name] controller)))
+(defn start-controller [app-db-snapshot controller config]
+  (let [out-chan (:commands-chan config)
+        in-chan (chan)
+        name (:name config)
+        app-db (:app-db config)
+        params (:params config)
+        controller (-> controller
+                       (assoc :params params)
+                       (assoc :route-params (:route-params config))
+                       (assoc :in-chan in-chan)
+                       (assoc :out-chan out-chan)
+                       (assoc :name name)
+                       (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
+        with-started (ashiba.controller/start controller params app-db-snapshot)]
+    (ashiba.controller/handler controller app-db in-chan out-chan) 
+    (assoc-in with-started [:internal :running-controllers name] controller)))
 
-(defn stop-controller [app-db-snapshot controller-name controller] 
-  (let [app-db-with-stopped-controller (ashiba.controller/stop controller (:params controller) app-db-snapshot)]
+(defn stop-controller [app-db-snapshot controller config] 
+  (let [name (:name config)
+        with-stopped (ashiba.controller/stop controller (:params controller) app-db-snapshot)]
     (close! (:in-chan controller))
-    (assoc-in app-db-with-stopped-controller [:internal :running-controllers]
-              (dissoc (get-in app-db-snapshot [:internal :running-controllers]) controller-name))))
+    (assoc-in with-stopped [:internal :running-controllers]
+              (dissoc (get-in with-stopped [:internal :running-controllers]) name))))
 
-(defn restart-controller [app-db-snapshot controller-name running-controller controller controller-params extras]
+(defn restart-controller [app-db-snapshot controller running-controller config]
   (-> app-db-snapshot
-      (stop-controller controller-name running-controller)
-      (start-controller controller-name controller controller-params extras)))
+      (stop-controller running-controller config)
+      (start-controller controller config)))
 
-(defn apply-controller-change [controllers controllers-params extras app-db-snapshot controller-name action]
-  (let [controller (controller-name controllers)
-        controller-params (controller-name controllers-params)
-        get-running-controller (fn [name] (get-in app-db-snapshot [:internal :running-controllers name]))] 
+(defn dispatch-controller-change [app-db-snapshot controller action config]
+  (let [name (:name config)
+        running (fn [name] (get-in app-db-snapshot [:internal :running-controllers name]))] 
     (case action
-      :start (start-controller app-db-snapshot controller-name controller controller-params extras)
-      :restart (restart-controller app-db-snapshot controller-name (get-running-controller controller-name) controller controller-params extras) 
-      :stop (stop-controller app-db-snapshot controller-name (get-running-controller controller-name))
+      :start (start-controller app-db-snapshot controller config)
+      :restart (restart-controller app-db-snapshot controller (running name) config) 
+      :stop (stop-controller app-db-snapshot (running name) config)
       :route-changed (do
-                       (send-command-to (get-running-controller controller-name) :route-changed [(:route-params extras)])
+                       (send-command-to (running name) :route-changed [(:route-params config)])
                        app-db-snapshot))))
 
-(defn apply-controllers-change [app-db-snapshot controllers controllers-params controllers-actions extras]
-  (reduce-kv (partial apply-controller-change
-                      controllers
-                      controllers-params
-                      extras) app-db-snapshot controllers-actions))
+(defn make-controller-change-applier [controllers controllers-params controllers-actions config]
+  (fn [app-db-snapshot name action]
+    (let [controller (get controllers name)
+          params (get controllers-params name)
+          config (merge config {:name name :params params})]
+      (dispatch-controller-change app-db-snapshot controller action config))))
 
-(defn route-changed [route-params app-db commands-chan controllers currently-running-controller]
+(defn apply-controllers-change [app-db-snapshot controllers controllers-params controllers-actions config]
+  (reduce-kv
+   (make-controller-change-applier controllers controllers-params controllers-actions config)
+   app-db-snapshot
+   controllers-actions))
+
+(defn route-changed [route-params app-db commands-chan controllers]
   (let [app-db-snapshot @app-db
         running-controllers (get-in app-db-snapshot [:internal :running-controllers])
         controllers-params (reduce-kv (fn [m k controller]
-                                     (assoc m k (controller-params route-params controller))){} controllers)
+                                        (assoc m k (controller-params route-params controller))){} controllers)
         controllers-actions (controllers-actions running-controllers controllers-params)] 
     (apply-controllers-change (assoc app-db-snapshot :route route-params)
-                           controllers
-                           controllers-params
-                           controllers-actions
-                           {:commands-chan commands-chan
-                            :app-db app-db
-                            :route-params route-params
-                            :currently-running-controller currently-running-controller})))
+                              controllers
+                              controllers-params
+                              controllers-actions
+                              {:commands-chan commands-chan
+                               :app-db app-db
+                               :route-params route-params})))
+
 
 (defn route-command-to-controller [controllers command-name command-args]
   (let [[controller-name command-name] command-name
@@ -98,9 +110,7 @@
 (defn start [route-chan commands-chan app-db controllers]
   (let [stop-route-block (chan)
         stop-command-block (chan)
-        scheduled-updates (atom [])
-        currently-running-controller (fn [controller-name]
-                                    (get-in @app-db [:internal :running-controllers controller-name])) 
+        scheduled-updates (atom []) 
         running-chans
         [(go
            (loop []
@@ -113,7 +123,7 @@
              (let [[val channel] (alts! [stop-route-block route-chan])]
                (when-not (= channel stop-route-block)
                  (let [route-params val]
-                   (reset! app-db (route-changed route-params app-db commands-chan controllers currently-running-controller))
+                   (reset! app-db (route-changed route-params app-db commands-chan controllers))
                    (recur))))))
          (go
            (loop []
@@ -123,8 +133,7 @@
                        running-controllers (get-in @app-db [:internal :running-controllers])]
                    (when (not (nil? command-name))
                      (route-command-to-controller running-controllers command-name command-args))
-                   (recur))))))
-         ]]
+                   (recur))))))]]
     {:running-chans running-chans
      :stop (fn []
              (let [controllers (get-in @app-db [:internal :running-controllers])]
