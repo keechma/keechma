@@ -1,7 +1,7 @@
-(ns ashiba.service
+(ns ashiba.controller
   (:require [cljs.core.async :refer [put!]]))
 
-(defprotocol IService
+(defprotocol IController
   (params [this route])
   (start [this params db])
   (stop [this params db])
@@ -11,7 +11,7 @@
   (is-running? [this]))
 
 (extend-type default
-  IService
+  IController
   (params [_ route] route)
   (start [_ params db] db)
   (stop [_ params db] db)
@@ -29,5 +29,5 @@
        (put! out-chan [command-name args])
        this)))
   (is-running? [this]
-    (let [currently-running-service (:currently-running-service this)]
-      (identical? this (currently-running-service)))))
+    (let [currently-running-controller (:currently-running-controller this)]
+      (identical? this (currently-running-controller)))))

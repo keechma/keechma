@@ -5,7 +5,7 @@
             [goog.history.EventType :as EventType]
             [ashiba.router :as router]
             [ashiba.ui-component :as ui]
-            [ashiba.service-manager :as service-manager])
+            [ashiba.controller-manager :as controller-manager])
   (:import goog.History)
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
 
@@ -25,7 +25,7 @@
    :commands-chan (chan)
    :app-db (app-db)
    :components {}
-   :services {}
+   :controllers {}
    :html-element nil
    :stop-fns []})
 
@@ -75,12 +75,12 @@
     (add-stop-fn state (fn [s] 
                          (reagent/unmount-component-at-node container)))))
 
-(defn start-services [state]
-  (let [services (:services state)
+(defn start-controllers [state]
+  (let [controllers (:controllers state)
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
         app-db (:app-db state)
-        manager (service-manager/start routes-chan commands-chan app-db services)]
+        manager (controller-manager/start routes-chan commands-chan app-db controllers)]
     (add-stop-fn state (fn [s]
                          (do
                            ((:stop manager))
@@ -96,7 +96,7 @@
     (-> config
         (expand-routes)
         (bind-history!)
-        (start-services)
+        (start-controllers)
         (render-to-element!))))
 
 (defn stop!

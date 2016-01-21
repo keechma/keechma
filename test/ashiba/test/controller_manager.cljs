@@ -1,28 +1,28 @@
-(ns ashiba.test.service-manager
+(ns ashiba.test.controller-manager
   (:require [cljs.test :refer-macros [deftest is async]]
-            [ashiba.service :as service]
+            [ashiba.controller :as controller]
             [ashiba.util :refer [animation-frame]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [ashiba.service-manager :as service-manager])
+            [ashiba.controller-manager :as controller-manager])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 
 ;; Setup ---------------------------------------------
 
-(defrecord FooService []
-  service/IService
+(defrecord FooController []
+  controller/IController
   (start [_ params state]
     (let [runs (or (:runs state) 0)]
       (merge state {:params params :runs (inc runs) :state :started})))
   (stop [_ params state]
     (assoc state :state :stopped)))
 
-(def foo-service (assoc (->FooService) :in-chan (chan)))
+(def foo-controller (assoc (->FooController) :in-chan (chan)))
 
 (defn add-to-log [state msg]
   (assoc state :log (conj (or (:log state) []) msg)))
 
-(defrecord UsersService []
-  service/IService
+(defrecord UsersController []
+  controller/IController
   (params [_ route-params]
     (when (= (:page route-params) "users")
       true))
@@ -31,8 +31,8 @@
   (stop [_ params state]
     (add-to-log state [:users :stop])))
 
-(defrecord CurrentUserService []
-  service/IService
+(defrecord CurrentUserController []
+  controller/IController
   (params [_ route-params]
     (:user-id route-params))
   (start [_ params state]
@@ -43,15 +43,15 @@
         (reset! app-db (add-to-log @app-db [:users :command command])))))
   (stop [this params state]
     (do
-      (service/execute this :stop)
+      (controller/execute this :stop)
       (add-to-log state [:current-user :stop]))))
 
-(defrecord SessionService []
-  service/IService
+(defrecord SessionController []
+  controller/IController
   (params [_ _] true)
   (start [this params state]
     (do
-      (service/execute this :start) 
+      (controller/execute this :start) 
       (add-to-log state [:session :start])))
   (handler [this app-db in-chan out-chan]
     (go (loop []
@@ -61,48 +61,48 @@
 
 ;; End Setup -----------------------------------------
 
-(deftest services-actions []
-  (let [running-services {:news {:params {:page 1 :per-page 10} :in-chan (chan)}
+(deftest controllers-actions []
+  (let [running-controllers {:news {:params {:page 1 :per-page 10} :in-chan (chan)}
                           :users {:params true :in-chan (chan)}
                           :comments {:params {:news-id 1} :in-chan (chan)}}
-        services {:news {:page 2 :per-page 10}
+        controllers {:news {:page 2 :per-page 10}
                   :users true
                   :category {:id 1}
                   :comments nil
                   :image-gallery nil}
-        services-actions (service-manager/services-actions
-                          running-services
-                          services)]
-    (is (= services-actions {:news :restart
+        controllers-actions (controller-manager/controllers-actions
+                          running-controllers
+                          controllers)]
+    (is (= controllers-actions {:news :restart
                             :comments :stop
                             :category :start
                             :users :route-changed}))))
 
-(deftest start-service []
-  (let [new-state (service-manager/start-service {:what :that} :foo foo-service {:foo :bar} {:commands-chan (chan)})]
+(deftest start-controller []
+  (let [new-state (controller-manager/start-controller {:what :that} :foo foo-controller {:foo :bar} {:commands-chan (chan)})]
     (is (= (dissoc new-state :internal) {:what :that :params {:foo :bar} :runs 1 :state :started}))
-    (is (instance? FooService (get-in new-state [:internal :running-services :foo])))
-    (is (= (get-in new-state [:internal :running-services :foo :params]) {:foo :bar}))))
+    (is (instance? FooController (get-in new-state [:internal :running-controllers :foo])))
+    (is (= (get-in new-state [:internal :running-controllers :foo :params]) {:foo :bar}))))
 
-(deftest stop-service [] 
-  (let [new-state (service-manager/stop-service {:what :that :internal {:running-services {:foo foo-service}}} :foo foo-service)]
-    (is (= new-state {:what :that :state :stopped :internal {:running-services {}}}))))
+(deftest stop-controller [] 
+  (let [new-state (controller-manager/stop-controller {:what :that :internal {:running-controllers {:foo foo-controller}}} :foo foo-controller)]
+    (is (= new-state {:what :that :state :stopped :internal {:running-controllers {}}}))))
 
-(deftest restart-service []
-  (let [started-state (service-manager/start-service {:what :that} :foo foo-service {:start 1} {:commands-chan (chan)})
-        started-service (get-in started-state [:internal :running-services :foo])
-        restarted-state (service-manager/restart-service started-state :foo started-service foo-service {:start 2} {:commands-chan (chan)})]
+(deftest restart-controller []
+  (let [started-state (controller-manager/start-controller {:what :that} :foo foo-controller {:start 1} {:commands-chan (chan)})
+        started-controller (get-in started-state [:internal :running-controllers :foo])
+        restarted-state (controller-manager/restart-controller started-state :foo started-controller foo-controller {:start 2} {:commands-chan (chan)})]
     (is (= (dissoc restarted-state :internal) {:what :that :params {:start 2} :state :started :runs 2}))
-    (is (instance? FooService (get-in restarted-state [:internal :running-services :foo])))
-    (is (= (get-in restarted-state [:internal :running-services :foo :params]) {:start 2}))))
+    (is (instance? FooController (get-in restarted-state [:internal :running-controllers :foo])))
+    (is (= (get-in restarted-state [:internal :running-controllers :foo :params]) {:start 2}))))
 
 (deftest app-state []
   (let [route-chan (chan)
         commands-chan (chan)
         app-db (atom {})
-        services {:users (->UsersService)
-                  :current-user (->CurrentUserService)
-                  :session (->SessionService)}
+        controllers {:users (->UsersController)
+                  :current-user (->CurrentUserController)
+                  :session (->SessionController)}
         app-instance (atom nil)
         log [;; first route
              [[:users :start] 
@@ -131,7 +131,7 @@
                                        (get log i)) indices)))]
     (async done
            (go
-             (reset! app-instance (service-manager/start route-chan commands-chan app-db services))
+             (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers))
              (>! route-chan {:page "users"})
              (<! (animation-frame 2))
              (is (= (get-log [0]) (:log @app-db)))

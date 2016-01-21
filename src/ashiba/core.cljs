@@ -1,6 +1,6 @@
 (ns ashiba.core
   (:require [reagent.core :as reagent :refer [atom]]
-            [ashiba.service :as service]
+            [ashiba.controller :as controller]
             [ashiba.app-state :as app-state]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [ashiba.ui-component :as ui])
@@ -12,7 +12,7 @@
 (defonce running-app (clojure.core/atom nil))
 
 (defrecord HelloWorld []
-  service/IService
+  controller/IController
   (params [_ route-params]
     (or (get-in route-params [:data :message]) "Hello!"))
   (start [_ params app-db]
@@ -44,7 +44,7 @@
                                      :subscription-deps [:message]}))
 
 (def app-definition {:html-element (.getElementById js/document "app")
-                     :services {:hello (->HelloWorld)}
+                     :controllers {:hello (->HelloWorld)}
                      :components {:main (-> main-component
                                             (assoc :topic :hello)
                                             (ui/resolve-subscription-dep :message message))}})
