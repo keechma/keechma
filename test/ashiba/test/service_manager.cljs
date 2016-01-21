@@ -45,18 +45,11 @@
   (params [_ _] true)
   (start [_ params state]
     (add-to-log state [:session :start]))
-  (handler [this in-chan out-chan]
-    (let [send-update service/send-update]
-      (go (loop []
-            (let [[command args] (<! in-chan)]
-              (if (= command :immediate-update-timing)
-                (do
-                  (send-update this (fn [state]
-                                 (add-to-log state [:session :scheduled])))
-                  (send-update this (fn [state]
-                                 (add-to-log state [:session :immediate])) true))
-                (send-update this (fn [state] (add-to-log state [:session :command command]))))
-              (when command (recur))))))))
+  (handler [this app-db in-chan out-chan]
+    (go (loop []
+          (let [[command args] (<! in-chan)]
+            (reset! app-db (add-to-log @app-db [:session :command command]))
+            (when command (recur)))))))
 
 ;; End Setup -----------------------------------------
 
@@ -119,11 +112,7 @@
              ;; third route
              [[:current-user :stop]
               [:current-user :start]
-              [:session :command :route-changed]]
-
-             ;; after immediate update timing
-             [[:session :immediate]
-              [:session :scheduled]]]
+              [:session :command :route-changed]]]
         get-log (fn [indices]
                   (apply concat (map (fn [i]
                                        (get log i)) indices)))]
@@ -142,8 +131,5 @@
              (>! route-chan {:page "current-user" :user-id 2})
              (<! (animation-frame 2))
              (is (= (get-log (range 4)) (:log @app-db)))
-             (>! commands-chan [[:session :immediate-update-timing]])
-             (<! (animation-frame 2))
-             (is (= (get-log (range 5)) (:log @app-db)))
              ((:stop @app-instance))
              (done)))))
