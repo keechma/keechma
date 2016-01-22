@@ -69,10 +69,10 @@
   (let [db {:notes {:store {1 {:id 1 :title "Note title"}}}}]
     (is (= (:title (edb/get-item-by-id {} db :notes 1)) "Note title"))))
 
-(deftest insert-collection-one []
+(deftest insert-named-item []
   (let [schema {:notes {}}
         db (util/add-empty-layout {} :notes)
-        db-with-items (edb/insert-collection-one schema db :notes :current-item {:id 1 :title "Note title"})
+        db-with-items (edb/insert-named-item schema db :notes :current-item {:id 1 :title "Note title"})
         expected-layout {:notes {:store {1 {:id 1 :title "Note title"}}
                                  :c-one {:current-item 1}
                                  :c-many {}}}]
@@ -107,13 +107,13 @@
                         :latest 
                         [{:id 3} {:id 4}])))))
 
-(deftest get-collection-one []
+(deftest get-named-item []
   (let [schema {:notes {}}
         note-1 {:id 1 :title "Note title 1"}
         db {:notes {:store {1 note-1}
                     :c-one {:current 1}
                     :c-many {}}}]
-    (is (= (edb/get-collection-one schema db :notes :current) note-1))))
+    (is (= (edb/get-named-item schema db :notes :current) note-1))))
 
 (deftest get-collection-many []
   (let [schema {:notes {}}
@@ -284,7 +284,7 @@
                              :c-many {:starred [2 3]}}}]
     (is (= expected-db
            (-> db
-               (edb/remove-collection-one :notes :current)
+               (edb/remove-named-item :notes :current)
                (edb/remove-collection-many :notes :latest))))))
 
 (deftest item-meta []
@@ -304,7 +304,7 @@
            (meta (edb/get-item-by-id schema db-with-items :notes 1))))
     (is (= item-meta (edb/get-item-meta schema db-with-items :notes 1)))))
 
-(deftest collection-one-meta []
+(deftest named-item-meta []
   (let [collection-meta {:status :loading}
         item-meta {:status :loaded}
         item {:id 1 :title "Note"}
@@ -312,10 +312,10 @@
         db (util/add-empty-layout {} :notes)
 
         db-with-collection
-        (edb/insert-collection-one schema db :notes :current-item nil collection-meta)
+        (edb/insert-named-item schema db :notes :current-item nil collection-meta)
 
         db-with-collection-and-item
-        (edb/insert-collection-one schema db-with-collection :notes :current-item item item-meta)
+        (edb/insert-named-item schema db-with-collection :notes :current-item item item-meta)
         
         expected-db-with-collection
         {:notes {:store {}
@@ -335,9 +335,9 @@
     (is (= db-with-collection expected-db-with-collection))
     (is (= db-with-collection-and-item expected-db-with-collection-and-item))
     (is (= collection-meta
-           (edb/get-collection-one-meta schema db-with-collection :notes :current-item)))
+           (edb/get-named-item-meta schema db-with-collection :notes :current-item)))
     (is (= item-meta
-           (edb/get-collection-one-meta schema db-with-collection-and-item :notes :current-item)))))
+           (edb/get-named-item-meta schema db-with-collection-and-item :notes :current-item)))))
 
 (deftest collection-many-meta []
   (let [collection-meta {:status :loading}
@@ -363,13 +363,13 @@
 
 (deftest removing-item-removes-its-id-from-collections []
   (let [schema {:notes {}}
-        insert-collection-one (partial edb/insert-collection-one schema)
+        insert-named-item (partial edb/insert-named-item schema)
         insert-collection-many (partial edb/insert-collection-many schema)
         note-1 {:id 1}
         note-2 {:id 2}
         db (util/add-empty-layout {} :notes)
         db-with-items-and-collections (-> db
-                                          (insert-collection-one :notes :current note-1)
+                                          (insert-named-item :notes :current note-1)
                                           (insert-collection-many :notes :list [note-1 note-2]))
         expected-db-after-delete {:notes {:store {2 {:id 2}}
                                           :c-one {}
@@ -392,7 +392,7 @@
                                       :c-many {}}}]
     (is (= expected-db (edb/remove-item {} db :notes 1)))))
 
-(deftest removing-collection-one-removes-meta []
+(deftest removing-named-item-removes-meta []
   (let [db {:notes {:store {}
                     :c-one {:current-item nil}
                     :c-many {}}
@@ -405,7 +405,7 @@
                      :__meta-store__ {:store {}
                                       :c-one {}
                                       :c-many {}}}]
-    (is (= expected-db (edb/remove-collection-one db :notes :current-item)))))
+    (is (= expected-db (edb/remove-named-item db :notes :current-item)))))
 
 (deftest removing-collection-many-removes-meta []
   (let [db {:notes {:store {}

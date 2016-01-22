@@ -5,10 +5,10 @@
             [clojure.set :as set]))
 
 (declare get-item-by-id)
-(declare insert-collection-one)
+(declare insert-named-item)
 (declare insert-collection-many)
 (declare insert-related)
-(declare get-collection-one)
+(declare get-named-item)
 (declare get-collection-many)
 (declare insert-meta)
 (declare remove-meta)
@@ -36,9 +36,9 @@
     (insert-item schema db entity-kw item)
     db))
 
-(defn insert-collection-one
+(defn insert-named-item
   ([schema db entity-kw collection-key item]
-   (insert-collection-one schema db entity-kw collection-key item nil))
+   (insert-named-item schema db entity-kw collection-key item nil))
   ([schema db entity-kw collection-key item meta]
    (if (and (nil? item) (nil? meta))
      db
@@ -81,7 +81,7 @@
                      relation-data (relation-kw item)
                      remove-collection-type-map {:one :c-one :many :c-many}
                      insert-collection-fn (if (= relation-type :one)
-                                            insert-collection-one
+                                            insert-named-item
                                             insert-collection-many)]
                  (if (and (contains? item relation-kw) (nil? relation-data))
                    (remove-collection db related-entity-kw (relation-type remove-collection-type-map) collection-key)
@@ -120,7 +120,7 @@
         (remove-meta entity-kw collection-key)
         (assoc-in [entity-kw collection-type] collections-without))))
 
-(defn remove-collection-one [db entity-kw collection-key]
+(defn remove-named-item [db entity-kw collection-key]
   (remove-collection db entity-kw :c-one collection-key))
 
 (defn remove-collection-many [db entity-kw collection-key]
@@ -140,8 +140,8 @@
     nil
     (get-item-by-id schema db meta-store (util/get-meta-id entity-kw id))))
 
-(defn get-collection-one-meta [schema db entity-kw collection-key]
-  (let [item (get-collection-one schema db entity-kw collection-key false)
+(defn get-named-item-meta [schema db entity-kw collection-key]
+  (let [item (get-named-item schema db entity-kw collection-key false)
         meta-key (if (nil? item)
                    collection-key
                    (util/get-item-id schema entity-kw item))]
@@ -153,7 +153,7 @@
   (fn [item relation-kw [relation-type related-entity-kw]]
     (let [collection-key (relations/get-related-collection-key entity-kw id relation-kw)
           get-collection-fn (if (= relation-type :one)
-                              get-collection-one
+                              get-named-item
                               get-collection-many)
           data-fn (partial get-collection-fn schema db related-entity-kw collection-key) ]
       (assoc item relation-kw data-fn))))
@@ -171,16 +171,16 @@
       (into [] (map (partial get-item-by-id schema db entity-kw) ids))
       (get-collection-many-meta schema db entity-kw collection-key))))
 
-(defn get-collection-one 
+(defn get-named-item 
   ([schema db entity-kw collection-key]
-   (get-collection-one schema db entity-kw collection-key true))
+   (get-named-item schema db entity-kw collection-key true))
   ([schema db entity-kw collection-key include-meta]
    (let [id (get-in db [entity-kw :c-one collection-key])
          item (get-item-by-id schema db entity-kw id)]
      (if include-meta
        (with-meta
          item
-         (get-collection-one-meta schema db entity-kw collection-key))
+         (get-named-item-meta schema db entity-kw collection-key))
        item))))
 
 (defn vacuum-entity-db [db entity-kw]
@@ -205,18 +205,18 @@
 
 (defn make-dbal [schema]
   {:insert-item (partial (util/ensure-layout insert-item) schema)
-   :insert-collection-one (partial (util/ensure-layout insert-collection-one) schema)
+   :insert-named-item (partial (util/ensure-layout insert-named-item) schema)
    :insert-collection-many (partial (util/ensure-layout insert-collection-many) schema)
    :append-collection-many (partial (util/ensure-layout append-collection-many) schema)
    :insert-meta insert-meta
    :remove-item (partial (util/ensure-layout remove-item) schema)
-   :remove-collection-one remove-collection-one 
+   :remove-named-item remove-named-item 
    :remove-collection-many remove-collection-many 
    :remove-meta remove-meta
    :get-item-by-id (partial get-item-by-id schema)
-   :get-collection-one (partial get-collection-one schema)
+   :get-named-item (partial get-named-item schema)
    :get-collection-many (partial (util/ensure-layout get-collection-many) schema)
    :get-item-meta (partial get-item-meta schema)
-   :get-collection-one-meta (partial get-collection-one-meta schema)
+   :get-named-item-meta (partial get-named-item-meta schema)
    :get-collection-many-meta (partial get-collection-many-meta schema)
    :vacuum vacuum})
