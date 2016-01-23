@@ -7,7 +7,8 @@
             [ashiba.ui-component :as ui]
             [ashiba.controller-manager :as controller-manager])
   (:import goog.History)
-  (:require-macros [cljs.core.async.macros :as m :refer [go]]))
+  (:require-macros [cljs.core.async.macros :as m :refer [go]]
+                   [reagent.ratom :refer [reaction]]))
 
 (defn app-db []
   (atom {:route {}
@@ -67,7 +68,9 @@
                             (str "#!" (router/map->url (:routes state) params)))
                   :app-db (:app-db state) 
                   :current-route-fn (fn []
-                                      (:route (deref (:app-db state))))})
+                                      (let [app-db (:app-db state)]
+                                        (reaction
+                                         (:route @app-db))))})
         main-component (-> (ui/system (:components state))
                            (reify-main-component))
         container (:html-element state)] 
