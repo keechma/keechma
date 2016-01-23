@@ -28,7 +28,7 @@
       (let [components (select-keys system dep-keys)
             missing-deps (missing-component-deps components)]  
         (if-not (empty? missing-deps)
-          (throw (js/Error (str "Missing dependencies " (clojure.string/join ", " missing-deps) " for component " component-key)))
+          (throw (js/Error (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
           (-> component
               (assoc :components components)
               (assoc :component-deps []))))
