@@ -6,7 +6,7 @@
   (start [this params db])
   (stop [this params db])
   (execute [this command-name] [this command-name args])
-  (handler [this app-db in-chan out-chan])
+  (handler [this app-db-atom in-chan out-chan])
   (send-command [this command-name] [this command-name args])
   (is-running? [this]))
 
