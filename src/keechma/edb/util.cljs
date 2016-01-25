@@ -1,4 +1,4 @@
-(ns ashiba.edb.util)
+(ns keechma.edb.util)
 
 (defn passthrough-item [item] item)
 

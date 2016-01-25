@@ -1,4 +1,4 @@
-(defproject ashiba "0.1.0-SNAPSHOT"
+(defproject keechma "0.1.0-SNAPSHOT"
   :description "FIXME: write this!"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"
@@ -28,11 +28,11 @@
               [{:id "dev"
                 :source-paths ["src"]
 
-                :figwheel {:on-jsload "ashiba.core/on-js-reload"}
+                :figwheel {:on-jsload "keechma.core/on-js-reload"}
 
-                :compiler {:main ashiba.core
+                :compiler {:main keechma.core
                            :asset-path "js/compiled/out"
-                           :output-to "resources/public/js/compiled/ashiba.js"
+                           :output-to "resources/public/js/compiled/keechma.js"
                            :output-dir "resources/public/js/compiled/out"
                            :source-map-timestamp true}}
                ;; This next build is an compressed minified build for
@@ -40,8 +40,8 @@
                ;; lein cljsbuild once min
                {:id "min"
                 :source-paths ["src"]
-                :compiler {:output-to "resources/public/js/compiled/ashiba.js"
-                           :main ashiba.core
+                :compiler {:output-to "resources/public/js/compiled/keechma.js"
+                           :main keechma.core
                            :optimizations :advanced
                            :pretty-print false}}
                {:id "test"
@@ -49,7 +49,7 @@
                 :compiler {:output-to 
                            "resources/public/js/compiled/test.js"
                            :optimizations :none
-                           :main ashiba.test.core}}]}
+                           :main keechma.test.core}}]}
 
   :figwheel {;; :http-server-root "public" ;; default and assumes "resources"
              ;; :server-port 3449 ;; default

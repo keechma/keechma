@@ -1,6 +1,6 @@
-(ns ashiba.edb.relations
+(ns keechma.edb.relations
   (:require [clojure.string :refer [join]]
-            [ashiba.edb.util :as util]))
+            [keechma.edb.util :as util]))
 
 
 (defn get-relations [schema entity-kw]

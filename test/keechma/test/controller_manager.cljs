@@ -1,9 +1,9 @@
-(ns ashiba.test.controller-manager
+(ns keechma.test.controller-manager
   (:require [cljs.test :refer-macros [deftest is async]]
-            [ashiba.controller :as controller]
-            [ashiba.util :refer [animation-frame]]
+            [keechma.controller :as controller]
+            [keechma.util :refer [animation-frame]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [ashiba.controller-manager :as controller-manager])
+            [keechma.controller-manager :as controller-manager])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 
 ;; Setup ---------------------------------------------

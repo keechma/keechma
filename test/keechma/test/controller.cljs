@@ -1,6 +1,6 @@
-(ns ashiba.test.controller
+(ns keechma.test.controller
   (:require [cljs.test :refer-macros [deftest is async]]
-            [ashiba.controller :as controller]
+            [keechma.controller :as controller]
             [cljs.core.async :refer [<! >! chan close! sliding-buffer put! alts! timeout]])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 

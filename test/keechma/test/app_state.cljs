@@ -1,10 +1,10 @@
-(ns ashiba.test.app-state
+(ns keechma.test.app-state
   (:require [cljs.test :refer-macros [deftest is async]] 
             [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [ashiba.app-state :as app-state])
+            [keechma.app-state :as app-state])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 
 (defn make-container []

@@ -1,8 +1,8 @@
-(ns ashiba.test.edb 
+(ns keechma.test.edb 
   (:require [cljs.test :refer-macros [deftest is]]
-            [ashiba.edb :as edb]
-            [ashiba.edb.util :as util]
-            [ashiba.edb.relations :as relations]
+            [keechma.edb :as edb]
+            [keechma.edb.util :as util]
+            [keechma.edb.relations :as relations]
             [clojure.string :refer [upper-case]]))
 
 (def schema {:notes {:id :id

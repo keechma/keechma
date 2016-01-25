@@ -1,9 +1,9 @@
-(ns ashiba.core
+(ns keechma.core
   (:require [reagent.core :as reagent :refer [atom]]
-            [ashiba.controller :as controller]
-            [ashiba.app-state :as app-state]
+            [keechma.controller :as controller]
+            [keechma.app-state :as app-state]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [ashiba.ui-component :as ui])
+            [keechma.ui-component :as ui])
   (:require-macros [reagent.ratom :refer [reaction]]
                    [cljs.core.async.macros :refer [go]]))
 

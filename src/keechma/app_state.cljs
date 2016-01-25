@@ -1,11 +1,11 @@
-(ns ashiba.app-state
+(ns keechma.app-state
   (:require [reagent.core :as reagent :refer [atom cursor]]
             [cljs.core.async :refer [put! close! chan timeout]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
-            [ashiba.router :as router]
-            [ashiba.ui-component :as ui]
-            [ashiba.controller-manager :as controller-manager])
+            [keechma.router :as router]
+            [keechma.ui-component :as ui]
+            [keechma.controller-manager :as controller-manager])
   (:import goog.History)
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))

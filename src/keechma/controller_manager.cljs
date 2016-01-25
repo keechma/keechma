@@ -1,11 +1,11 @@
-(ns ashiba.controller-manager
+(ns keechma.controller-manager
   (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [ashiba.util :refer [animation-frame]]
-            [ashiba.controller])
+            [keechma.util :refer [animation-frame]]
+            [keechma.controller])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
 
 (defn controller-params [route-params controller]
-  (ashiba.controller/params controller route-params))
+  (keechma.controller/params controller route-params))
 
 (defn controller-action [running-params params] 
   (if (= running-params params)
@@ -42,13 +42,13 @@
                        (assoc :out-chan out-chan)
                        (assoc :name name)
                        (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
-        with-started (ashiba.controller/start controller params app-db-snapshot)]
-    (ashiba.controller/handler controller app-db in-chan out-chan) 
+        with-started (keechma.controller/start controller params app-db-snapshot)]
+    (keechma.controller/handler controller app-db in-chan out-chan) 
     (assoc-in with-started [:internal :running-controllers name] controller)))
 
 (defn stop-controller [app-db-snapshot controller config] 
   (let [name (:name config)
-        with-stopped (ashiba.controller/stop controller (:params controller) app-db-snapshot)]
+        with-stopped (keechma.controller/stop controller (:params controller) app-db-snapshot)]
     (close! (:in-chan controller))
     (assoc-in with-stopped [:internal :running-controllers]
               (dissoc (get-in with-stopped [:internal :running-controllers]) name))))

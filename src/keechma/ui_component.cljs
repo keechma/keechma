@@ -1,7 +1,8 @@
-(ns ashiba.ui-component
+(ns keechma.ui-component
   (:require [cljs.core.async :refer [put!]]
             [com.stuartsierra.dependency :as dep]
-            [ashiba.util :as util]
+            [keechma.util :as util]
+            [clojure.string :refer [join]]
             [clojure.set :as set]))
 
 (declare component->renderer)

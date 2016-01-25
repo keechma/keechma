@@ -1,7 +1,7 @@
-(ns ashiba.edb
-  (:require [ashiba.edb.util :as util]
-            [ashiba.edb.relations :as relations]
-            [ashiba.util :refer [update-values]]
+(ns keechma.edb
+  (:require [keechma.edb.util :as util]
+            [keechma.edb.relations :as relations]
+            [keechma.util :refer [update-values]]
             [clojure.set :as set]))
 
 (declare get-item-by-id)

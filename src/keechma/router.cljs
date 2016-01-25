@@ -1,4 +1,4 @@
-(ns ashiba.router
+(ns keechma.router
   (:require [clojure.walk :refer [keywordize-keys]]
             [clojure.set :refer [superset? union]]
             [secretary.core :refer [decode-query-params encode-query-params]]

@@ -1,6 +1,6 @@
-(ns ashiba.test.router
+(ns keechma.test.router
   (:require [cljs.test :refer-macros [deftest is]] 
-            [ashiba.router :as router]))
+            [keechma.router :as router]))
 
 (deftest match-path []
   (let [routes (router/expand-routes ["/:foo/bar/:baz"])

@@ -1,4 +1,4 @@
-(ns ashiba.util
+(ns keechma.util
   (:require [cljs.core.async :refer [chan close! put!]]))
 
 (defn update-values [m f & args]

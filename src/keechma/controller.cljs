@@ -1,4 +1,4 @@
-(ns ashiba.controller
+(ns keechma.controller
   (:require [cljs.core.async :refer [put!]]))
 
 (defprotocol IController
