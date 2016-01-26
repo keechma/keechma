@@ -203,24 +203,18 @@ In Keechma UI is completely decoupled. It’s decoupled from the data it renders
 
 #### Why?
 
-In most of the other UI systems, components depend on the global store and react to it’s changes. Keechma hates globals, so everything gets passed to components when that app starts.
+In most of the other UI systems, components depend on the global store and react to it’s changes. Keechma uses no globals, so everything gets passed to components when that app starts.
 
 **What does that mean?** When you define a component in Keechma, along the renderer (reagent) function, you define a record that declares that component’s dependencies.
 
 - It’s data dependencies
 - It’s child component dependencies
 
-I know that after you read the preceding list, you were like: “OK, I understand the data dependencies, but WTF does he mean by child component dependencies”
-
-So, another place where Keechma is different (sigh). Another sidetrack.
-
 In building component based UIs there are two extremes:
 
 `I get everything from my parent <——————> I depend on the globals and I don’t care`
 
-Keechma takes another (middle) approach. Every component (that is stageful) declares it’s dependencies and they get passed to it when the app starts.
-
-But!!!1 What??!
+Keechma takes another (middle) approach. Every component (that is stateful) declares it’s dependencies and they get passed to it when the app starts. 
 
 So, in Keechma components are defined in terms of systems. A system looks like this:
 
