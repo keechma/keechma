@@ -50,13 +50,29 @@
                 (assoc system key component)
                 (assoc system key (component-with-deps key component system))))) components sorted-keys))
 
-(defn system [components]
-  (if (nil? (:main components))
-    (throw (js/Error "System must have a :main component!"))
-    (let [graph (component-dep-graph components)
-          sorted-keys (dep/topo-sort graph)]
-      (:main (resolved-system components sorted-keys)))))
+(defn resolve-component-subscriptions [component subscriptions]
+  (reduce (fn [c dep]
+            (let [sub (get subscriptions dep)]
+              (if (nil? sub)
+                (throw (js/Error (str "Missing subscription: " dep)))
+                (resolve-subscription-dep c dep sub))))
+          component (or (:subscription-deps component) [])))
 
+(defn resolve-subscriptions [components subscriptions]
+  (reduce-kv (fn [components k c]
+               (assoc components k (resolve-component-subscriptions c subscriptions)))
+             {} components))
+
+(defn system
+  ([components] (system components {}))
+  ([components subscriptions]
+   (if (nil? (:main components))
+     (throw (js/Error "System must have a :main component!"))
+     (let [graph (component-dep-graph components)
+           sorted-keys (dep/topo-sort graph)
+           components-with-resolved-deps (resolve-subscriptions components subscriptions)]
+       (:main (resolved-system components-with-resolved-deps sorted-keys))))))
+ 
 (defprotocol IUIComponent  
   (url [this params])
   (subscription [this name])
