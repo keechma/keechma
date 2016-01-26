@@ -68,26 +68,26 @@ Here’s an example:
 
 ```clojure
 ;; define routes
-(def routes [[“:page”, {:page “index”}]
-             “:page/:id”
-             “:page/:id/:action”]) 
+(def routes [[":page", {:page "index"}]
+             ":page/:id"
+             ":page/:id/:action"]) 
 
 (def expanded-routes (keechma.router/expand-routes routes))
 
-(keechma.router/url->map expanded-routes “foo”)
-;; {:page “foo”}
+(keechma.router/url->map expanded-routes "foo")
+;; {:page "foo"}
 
-(keechma.router/url->map expanded-routes “foo/1”)
-;; {:page “foo” :id 1}
+(keechma.router/url->map expanded-routes "foo/1")
+;; {:page "foo" :id 1}
 
-(keechma.router/map->url expanded-routes {:page “foo”})
-;; “foo”
+(keechma.router/map->url expanded-routes {:page "foo"})
+;; "foo"
 
-(keechma.router/map->url expanded-routes {:page “foo” :id 1})
-;; “foo/1”
+(keechma.router/map->url expanded-routes {:page "foo" :id 1})
+;; "foo/1"
 
-(keechma.router/map->url expanded-routes {:page “foo” :id 1 :action “bar” :qux “baz”})
-;; “foo/1/bar?qux=baz”
+(keechma.router/map->url expanded-routes {:page "foo" :id 1 :action "bar" :qux "baz"})
+;; "foo/1/bar?qux=baz"
 ```
 
 Few things to point out:
@@ -114,13 +114,13 @@ I know it seems confusing, but I’ll try to make it clearer soon. Before that I
 
 Every frontend app has to take care of it’s state, and there are multiple ways how you can enter that state. In Keechma state is strictly derived from the URL, but we still have the following situations:
 
-1. User reloads the page and lands to the page with the URL ‘/news/1”
-2. User goes from the route “/news” to route “/news/1”
-3. User is on the route “/news/1” and is posting a comment
+1. User reloads the page and lands to the page with the URL ‘/news/1"
+2. User goes from the route "/news" to route "/news/1"
+3. User is on the route "/news/1" and is posting a comment
 
 These situations are something that you will have to handle in every app you write. There are also different UI layouts that can affect how you react to those routes:
 
-- You could have a “page” based app and transition from “/news” to “/news/1” basically replaces the whole page (except for the menu, and the rest of the chrome)
+- You could have a "page" based app and transition from "/news" to "/news/1" basically replaces the whole page (except for the menu, and the rest of the chrome)
 - You could have a master - detail layout where you show a list of news in one panel and a detail view of the news with the id 1 in the detail panel
 - Commenting on the news could take you to a new page
 - Commenting on the news could append the comment to the list of the comments
@@ -129,9 +129,9 @@ Anyway, this is just a subset of possible scenarios. You need a system that scal
 
 You need a system that allows you to do the following:
 
-- When user transitions from “/news” to “/news/1” replace everything on the screen with the news with id 1 but, don’t load anything, you already have it in memory.
-- When user refreshes on the “/news/1” page and you use master - detail layout, load both the news list and the news with id 1 and show them both on the screen
-- When user posts a comment and it’s saved in the DB, send him to the “Thank you page”
+- When user transitions from "/news" to "/news/1" replace everything on the screen with the news with id 1 but, don’t load anything, you already have it in memory.
+- When user refreshes on the "/news/1" page and you use master - detail layout, load both the news list and the news with id 1 and show them both on the screen
+- When user posts a comment and it’s saved in the DB, send him to the "Thank you page"
 - When user posts a comment and it’s saved in the DB, show that comment on top of the existing comments
 
 It gets complicated fast.
@@ -164,7 +164,7 @@ Important thing to mention is that `params` function is a way for the controller
 
 ### Entity DB
 
-Entity DB in Keechma is a place where you put your domain entities. Entity is anything that is “identifiable” by the `id` function (whatever that function is).
+Entity DB in Keechma is a place where you put your domain entities. Entity is anything that is "identifiable" by the `id` function (whatever that function is).
 
 Anything you load from AJAX should be saved in EDB, anything that has any kind of meaning in your app should also go in there.
 
@@ -176,9 +176,9 @@ When you change the `status` of the note (from `read` to `unread`) you want that
 
 > A side note here: In JavaScript it’s not such a big problem, if your list and detail use the same object, you can change things in place, and it will change the `same` object, but in ClojureScript, everything is immutable, so that won’t work.
 
-EntityDB takes care of that. The tradeoff is that you have to give a name to your stuff. You must name your collections, and you must name your “named” items.
+EntityDB takes care of that. The tradeoff is that you have to give a name to your stuff. You must name your collections, and you must name your "named" items.
 
-Names you give to your collections and to your “named” items should be domain names (related to your app). In the example of our Evernote clone it would look like this:
+Names you give to your collections and to your "named" items should be domain names (related to your app). In the example of our Evernote clone it would look like this:
 
 ```clojure
 ;; define edb schema
