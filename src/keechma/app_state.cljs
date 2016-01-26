@@ -71,7 +71,7 @@
                                       (let [app-db (:app-db state)]
                                         (reaction
                                          (:route @app-db))))})
-        main-component (-> (ui/system (:components state))
+        main-component (-> (ui/system (:components state) (or (:subscriptions state) {}))
                            (reify-main-component))
         container (:html-element state)] 
     (reagent/render-component [main-component] container) 
