@@ -221,21 +221,21 @@ In Keechma components are defined in terms of systems. A system looks like this:
 ```clojure
 (defn layout-renderer [ctx]
   [:div.app
-   [:div.sidebar (keechma.ui-controller/component ctx :sidebar)] ;; renders the sidebar component
+   [:div.sidebar (keechma.ui-component/component ctx :sidebar)] ;; renders the sidebar component
    [:div.main]])
 
-(def layout-component (keechma.ui-controller/constructor
+(def layout-component (keechma.ui-component/constructor
                        {:renderer layout-renderer
                         :component-deps [:sidebar]}))
 
 (defn sidebar-renderer [ctx]
   ...reagent code...)
 
-(def sidebar-component (keechma.ui-controller/constructor
+(def sidebar-component (keechma.ui-component/constructor
                         {:renderer sidebar-renderer
                          :subscription-deps [:menu]}))
 
-(def system (keechma.ui-controller/system
+(def system (keechma.ui-component/system
              {:main layout-component
               :sidebar sidebar-component}
              {:menu (fn [app-state] ;; menu subscription
@@ -249,8 +249,8 @@ What are the benefits of this approach? Except of the obvious one, nothing is gl
 Let's say you have a generalized grid component, and you use it in a few places in your project, news list and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
 
 ```clojure
-(def system {:user-grid (keechma.ui-controller/resolve-subscription-dep grid-component :list user-list
-             :news-grid (keechma.ui-controller/resolve-subscription-dep grid-component :list news-list))})
+(def system {:user-grid (keechma.ui-component/resolve-subscription-dep grid-component :list user-list
+             :news-grid (keechma.ui-component/resolve-subscription-dep grid-component :list news-list))})
 ```
 
 When you manually resolve dependencies, all unresolved dependencies will still be automatically resolved.
