@@ -257,7 +257,7 @@ When you manually resolve dependencies, all unresolved dependencies will still b
 
 Another property of the component systems is that they can be nested. For instance, you could create system for each of the main areas in your app, and then pass them to the main system which will use them to render those areas:
 
-```
+```clojure
 (def user-admin-system (keechma.ui-component/system {...components-here...}))
 (def news-admin-system (keechma.ui-component/system {...components-here...}))
 
