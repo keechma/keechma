@@ -8,7 +8,7 @@ Yes, it’s a nod to BackboneJS and SpineJS.
 
 ## Why Keechma
 
-I’ve been working on JavaScript apps for a long time (> 5 years) and most of that time I was working both on the application and framework code (CanJS). 
+I’ve been working on JavaScript apps for a long time (> 5 years) and most of that time I was working both on the application and framework code (CanJS).
 
 I’ve seen the start of the structured JavaScript development when we were building decoupled jQuery components that were communicating through events, and I’ve been part of the whole evolution to the central application data structure that is prevalent in the frontend applications today.
 
@@ -37,7 +37,7 @@ Keechma is built on top of work of many that came before. I want to list these p
 
 ### Differences
 
-So, how does Keechma differ and why you should care? 
+So, how does Keechma differ and why you should care?
 
 Keechma has the following components:
 
@@ -50,7 +50,7 @@ Biggest and the most important difference of Keechma compared to other framework
 
 I want to mention that Keechma as a system is extremely opinionated, but each of the parts is built in a pure, functional processing way. You could take these ingredients and build a completely different thing. 
 
-Everything is complected together in the ‘src/keechma/app_state.cljs` file. This file contains `start!` and `stop!` functions that glue or split your components.
+Everything is complected together in the `src/keechma/app_state.cljs` file. This file contains `start!` and `stop!` functions that glue or split your components.
 
 ## How does it work
 
@@ -216,12 +216,114 @@ In building component based UIs there are two extremes:
 
 Keechma takes another (middle) approach. Every component (that is stateful) declares it’s dependencies and they get passed to it when the app starts. 
 
-So, in Keechma components are defined in terms of systems. A system looks like this:
+In Keechma components are defined in terms of systems. A system looks like this:
 
 ```clojure
+(defn layout-renderer [ctx]
+  [:div.app
+   [:div.sidebar (keechma.ui-controller/component ctx :sidebar)] ;; renders the sidebar component
+   [:div.main]])
+
+(def layout-component (keechma.ui-controller/constructor
+                       {:renderer layout-renderer
+                        :component-deps [:sidebar]}))
+
+(defn sidebar-renderer [ctx]
+  ...reagent code...)
+
+(def sidebar-component (keechma.ui-controller/constructor
+                        {:renderer sidebar-renderer
+                         :subscription-deps [:menu]}))
+
 (def system (keechma.ui-controller/system
-             {main: component-record
-              sidebar: component-record})
+             {:main layout-component
+              :sidebar sidebar-component}
+             {:menu (fn [app-state] ;; menu subscription
+                     (:menu-items @app-state))})
 ```
 
-System uses the `stuartsierra/component` library to resolve the dependencies.
+System uses the `stuartsierra/component` library to resolve the component dependencies. That way you don't have to write too much boilerplate code if you use only the default mappings.
+
+What are the benefits of this approach? Except of the obvious one, nothing is global, your components are completely reusable out of the box. When defining a system you can override the default component and subscription mappings for each component.
+
+Let's say you have a generalized grid component, and you use it in a few places in your project, news list and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
+
+```clojure
+(def system {:user-grid (keechma.ui-controller/resolve-subscription-dep grid-component :list user-list
+             :news-grid (keechma.ui-controller/resolve-subscription-dep grid-component :list news-list))})
+```
+
+When you manually resolve dependencies, all unresolved dependencies will still be automatically resolved.
+
+Another property of the component systems is that they can be nested. For instance, you could create system for each of the main areas in your app, and then pass them to the main system which will use them to render those areas:
+
+```
+(def user-admin-system (keechma.ui-component/system {...components-here...}))
+(def news-admin-system (keechma.ui-component/system {...components-here...}))
+
+(def main-system (keechma.ui-component/system {:users user-admin-system
+                                               :news news-admin-system})
+```
+
+UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside. 
+
+### Glueing everything together
+
+Each of the described parts allow you to write parts of the app that are decoupled from each other. Now we need to assemble it into the app. Keechma comes with the app state library that takes care of that.
+
+It does the following:
+
+1. It binds the routes to the history (right now pushState doesn't work, but it's coming soon)
+2. It creates system from the components you registered
+3. It starts the controller manager
+4. It renders the app to the HTML element
+
+Keechma apps can be started and stopped. Stopping the app will do the cleanup (unbind the router) and remove it from the page.
+
+#### Communication between components
+
+Since everything is decoupled, we need a way in which we can communicate. For instance, components need to handle user actions.
+
+When starting the app, Keechma will create a commands channel that can be used by components to message the controllers. Keys used to register the controllers are topics on which they listen for messages.
+
+Example:
+
+```clojure
+(def definition {:routes [[":page" {:page "home"}]
+                          ":page/:slug"
+                          ":page/:slug/:action"]
+                 :controllers {:restaurants (c-restaurants/->Controller) ;; listens on the `restaurants` topic
+                               :restaurant (c-restaurant/->Controller)
+                               :order (c-order/->Controller)
+                               :order-history (c-order-history/->Controller)
+                               :vacuum (c-vacuum/->Controller)}
+                 :html-element (.getElementById js/document "app")
+                 :components {...map of components...}})
+```
+
+When you want a component to be able to send the messages to the controller, you have to `assoc` it a `:topic`:
+
+```clojure
+(def system (keechma.ui-component/system {:restaurants (assoc restaurants-component :topic :restaurants)}))
+
+;; Now when you send a message from the component it will be picked by the :restaurants controller:
+
+(defn restaurants-renderer [ctx]
+  (keechma.ui-component/send-command :command-name command-args))
+```
+
+#### Architecture overview:
+
+Architecture of the Keechma app looks like this
+
+![Keechma Architecture](http://i.imgur.com/lk0ZhCU.png?1)
+
+- Route changes are communicated through the route channel to the controller manager
+    + Based on the route controller manager will start or stop controllers
+- Controllers have `in-chan` and `out-chan` which they can use to communicate with the world (they can send messages to other controllers).
+- Controllers can change the app-db which will trigger the re-rendering of the app
+- UI communicates with the controllers by sending messages through the `commands-chan`. Those messages get routed to the controller (based on the topic) which receives them through the `in-chan`
+
+### Example Application
+
+You can find an example app [here](https://bitbucket.org/retro/place-my-order/). It is a ClojureScript rewrite of the http://place-my-order.com application which is written as a part of the [DoneJS Guides](http://donejs.com/place-my-order.html).
