@@ -6,14 +6,14 @@
 
 (declare get-item-by-id)
 (declare insert-named-item)
-(declare insert-collection-many)
+(declare insert-collection)
 (declare insert-related)
 (declare get-named-item)
-(declare get-collection-many)
+(declare get-collection)
 (declare insert-meta)
 (declare remove-meta)
-(declare get-collection-many-meta)
-(declare remove-collection)
+(declare get-collection-meta)
+(declare remove-collection-or-named-item)
 
 (def meta-store :__meta-store__)
 
@@ -50,9 +50,9 @@
            ((partial insert-item-when-not-nil schema) entity-kw item)
            (insert-meta entity-kw meta-key meta))))))
 
-(defn insert-collection-many
+(defn insert-collection
   ([schema db entity-kw collection-key data]
-   (insert-collection-many schema db entity-kw collection-key data nil))
+   (insert-collection schema db entity-kw collection-key data nil))
   ([schema db entity-kw collection-key data meta]
    (if (and (empty? data) (nil? meta))
      db
@@ -64,14 +64,14 @@
            ((partial reduce (fn [db item]
                               (insert-item schema db entity-kw item))) data))))))
 
-(defn append-collection-many
+(defn append-collection
   ([schema db entity-kw collection-key data]
-   (let [current-meta (get-collection-many-meta schema db entity-kw collection-key)]
-     (append-collection-many schema db entity-kw collection-key data current-meta)))
+   (let [current-meta (get-collection-meta schema db entity-kw collection-key)]
+     (append-collection schema db entity-kw collection-key data current-meta)))
   ([schema db entity-kw collection-key data meta]
    (let [c-path [entity-kw :c-many collection-key]
          current-ids (get-in db c-path)
-         db-with-items (insert-collection-many schema db entity-kw collection-key data meta)
+         db-with-items (insert-collection schema db entity-kw collection-key data meta)
          new-ids (get-in db-with-items c-path)]
      (assoc-in db-with-items c-path (flatten [current-ids new-ids])))))
 
@@ -82,9 +82,9 @@
                      remove-collection-type-map {:one :c-one :many :c-many}
                      insert-collection-fn (if (= relation-type :one)
                                             insert-named-item
-                                            insert-collection-many)]
+                                            insert-collection)]
                  (if (and (contains? item relation-kw) (nil? relation-data))
-                   (remove-collection db related-entity-kw (relation-type remove-collection-type-map) collection-key)
+                   (remove-collection-or-named-item db related-entity-kw (relation-type remove-collection-type-map) collection-key)
                    (insert-collection-fn schema db related-entity-kw collection-key relation-data))))
              db relations))
 
@@ -94,17 +94,17 @@
       (remove-meta db entity-kw meta-key)
       (insert-item schema (util/add-empty-layout db meta-store) meta-store meta))))
 
-(defn remove-item-id-from-collections-one [collections id]
+(defn remove-item-id-from-named-items [collections id]
   (into {} (filter (fn [[key val]]
                      (not= val id)) collections)))
 
-(defn remove-item-id-from-collections-many [collections id]
+(defn remove-item-id-from-collections [collections id]
   (update-values collections (fn [val]
                                (filterv (partial not= id) val))))
 
 (defn remove-item [schema db entity-kw id]
-  (let [c-one-without-item-id (remove-item-id-from-collections-one (get-in db [entity-kw :c-one]) id)
-        c-many-without-item-id (remove-item-id-from-collections-many (get-in db [entity-kw :c-many]) id)
+  (let [c-one-without-item-id (remove-item-id-from-named-items (get-in db [entity-kw :c-one]) id)
+        c-many-without-item-id (remove-item-id-from-collections (get-in db [entity-kw :c-many]) id)
         store-without-item (dissoc (get-in db [entity-kw :store]) id)
         db (-> db
                (remove-meta entity-kw id)
@@ -114,17 +114,17 @@
         relations (relations/get-relations schema entity-kw)]
     (reduce-kv (partial relations/remove-related-collections entity-kw id) db relations)))
 
-(defn remove-collection [db entity-kw collection-type collection-key]
+(defn remove-collection-or-named-item [db entity-kw collection-type collection-key]
   (let [collections-without (dissoc (get-in db [entity-kw collection-type]) collection-key)]
     (-> db
         (remove-meta entity-kw collection-key)
         (assoc-in [entity-kw collection-type] collections-without))))
 
 (defn remove-named-item [db entity-kw collection-key]
-  (remove-collection db entity-kw :c-one collection-key))
+  (remove-collection-or-named-item db entity-kw :c-one collection-key))
 
-(defn remove-collection-many [db entity-kw collection-key]
-  (remove-collection db entity-kw :c-many collection-key))
+(defn remove-collection [db entity-kw collection-key]
+  (remove-collection-or-named-item db entity-kw :c-many collection-key))
 
 (defn remove-meta [db entity-kw id]
   (let [meta-key (util/get-meta-id entity-kw id)
@@ -147,14 +147,14 @@
                    (util/get-item-id schema entity-kw item))]
     (get-item-meta schema db entity-kw meta-key)))
 
-(def get-collection-many-meta get-item-meta)
+(def get-collection-meta get-item-meta)
 
 (defn get-related-items-fn [schema db entity-kw id]
   (fn [item relation-kw [relation-type related-entity-kw]]
     (let [collection-key (relations/get-related-collection-key entity-kw id relation-kw)
           get-collection-fn (if (= relation-type :one)
                               get-named-item
-                              get-collection-many)
+                              get-collection)
           data-fn (partial get-collection-fn schema db related-entity-kw collection-key) ]
       (assoc item relation-kw data-fn))))
 
@@ -165,11 +165,11 @@
         (with-meta (get-item-meta schema db entity-kw id))
         ((partial reduce-kv (get-related-items-fn schema db entity-kw id)) relations))))
 
-(defn get-collection-many [schema db entity-kw collection-key]
+(defn get-collection [schema db entity-kw collection-key]
   (let [ids (get-in db [entity-kw :c-many collection-key])]
     (with-meta
       (into [] (map (partial get-item-by-id schema db entity-kw) ids))
-      (get-collection-many-meta schema db entity-kw collection-key))))
+      (get-collection-meta schema db entity-kw collection-key))))
 
 (defn get-named-item 
   ([schema db entity-kw collection-key]
@@ -206,17 +206,18 @@
 (defn make-dbal [schema]
   {:insert-item (partial (util/ensure-layout insert-item) schema)
    :insert-named-item (partial (util/ensure-layout insert-named-item) schema)
-   :insert-collection-many (partial (util/ensure-layout insert-collection-many) schema)
-   :append-collection-many (partial (util/ensure-layout append-collection-many) schema)
+   :insert-collection (partial (util/ensure-layout insert-collection) schema)
+   :append-collection (partial (util/ensure-layout append-collection) schema)
    :insert-meta insert-meta
    :remove-item (partial (util/ensure-layout remove-item) schema)
    :remove-named-item remove-named-item 
-   :remove-collection-many remove-collection-many 
+   :remove-collection remove-collection 
    :remove-meta remove-meta
    :get-item-by-id (partial get-item-by-id schema)
    :get-named-item (partial get-named-item schema)
-   :get-collection-many (partial (util/ensure-layout get-collection-many) schema)
+   :get-collection (partial (util/ensure-layout get-collection) schema)
    :get-item-meta (partial get-item-meta schema)
    :get-named-item-meta (partial get-named-item-meta schema)
-   :get-collection-many-meta (partial get-collection-many-meta schema)
+   :get-collection-meta (partial get-collection-meta schema)
    :vacuum vacuum})
+
