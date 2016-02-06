@@ -6,6 +6,8 @@ Keechma is a set of ClojureScript libraries that function as a backbone for your
 
 Yes, it’s a nod to BackboneJS and SpineJS.
 
+[![Clojars Project](https://img.shields.io/clojars/v/keechma.svg)](https://clojars.org/keechma)
+
 ## Why Keechma
 
 I’ve been working on JavaScript apps for a long time (> 5 years) and most of that time I was working both on the application and framework code (CanJS).
