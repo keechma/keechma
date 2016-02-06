@@ -1,7 +1,7 @@
 {
   "name": "keechma",
-  "version": "1.0.0",
-  "description": "FIXME: Write a one-line description of your library/project.",
+  "version": "0.0.1",
+  "description": "Frontend micro framework for ClojureScript and Reagent",
   "author": "",
   "license": "ISC",
   "devDependencies": {
