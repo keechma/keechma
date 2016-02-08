@@ -17,17 +17,19 @@
 
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-figwheel "0.5.0-1"]
-            [lein-doo "0.1.6"]]
+            [lein-doo "0.1.6"]
+            [lein-codox "0.9.3"]]
 
   :source-paths ["src"]
+
+  :codox {:language :clojurescript
+          :metadata {:doc/format :markdown}}
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
   
   :cljsbuild {:builds
               [{:id "dev"
-                :source-paths ["src"]
-
-                :figwheel {:on-jsload "keechma.core/on-js-reload"}
+                :source-paths ["src"] 
 
                 :compiler {:main keechma.core
                            :asset-path "js/compiled/out"

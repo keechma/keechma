@@ -15,9 +15,23 @@
 (declare get-collection-meta)
 (declare remove-collection-or-named-item)
 
-(def meta-store :__meta-store__)
+(def ^:private meta-store :__meta-store__)
 
 (defn insert-item
+  "Inserts an item into the EntityDB collection.
+
+  ```clojure
+  (def schema {:foos {:id :id}})
+  (def entity-db {})
+
+  (def item {:id 1 :name \"Foo\"})
+  (def item-meta {:is-loading false})
+
+  (insert-item schema db :foos item item-meta)
+  ;; Returns the new version of the entity-db with the item inserted
+  ;; inserted into the store
+  ```
+  "
   ([schema db entity-kw item] (insert-item schema db entity-kw item nil))
   ([schema db entity-kw item meta]
    (let [id (util/get-item-id schema entity-kw item) 
@@ -31,12 +45,32 @@
          (insert-meta entity-kw id meta)
          (assoc-in [entity-kw :store id] merged-item)))))
 
-(defn insert-item-when-not-nil [schema db entity-kw item]
+(defn insert-item-when-not-nil 
+  "Inserts an entity into the EntityDB if the entity is not nil."
+  [schema db entity-kw item]
   (if-not (nil? item)
     (insert-item schema db entity-kw item)
     db))
 
 (defn insert-named-item
+  "Inserts an item into the EntityDB, and references it from the named item slot.
+
+  Item will be stored in the internal store, and named item slot will contain only 
+  the identity of the item.
+   
+  ```clojure
+  (def entity-db {})
+  (def schema {:foos {:id :id}})
+
+  (def new-entity-db (insert-named-item schema entity-db :foos :current {:id 1 :name \"foo\"}))
+  ;; Returns the new version of the entity-db with the entity saved in the store and
+  ;; referenced from the `:current` named item slot.
+
+  (get-named-item schema new-entity-db :foos :current)
+  ;; Returns the entity referenced from the `:current` named slot.
+
+  ```
+  " 
   ([schema db entity-kw collection-key item]
    (insert-named-item schema db entity-kw collection-key item nil))
   ([schema db entity-kw collection-key item meta]
@@ -51,6 +85,29 @@
            (insert-meta entity-kw meta-key meta))))))
 
 (defn insert-collection
+  "Inserts a collection of items into the EntityDB. Each item will be
+  stored in the internal store map, and the collection will be stored as a vector
+  of entity identities.
+
+  ```clojure
+  (def entity-db {})
+  (def schema {:foos {:id :id}})
+
+  (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
+
+  (def new-entity-db (insert-collection schema entity-db :foos :list collection))
+  ;; Returns the new version of entity db. Each item will be stored
+  ;; in the internal store map and collection will contain only the
+  ;; item ids.
+
+  (get-collection schema new-entity-db :foos :list)
+  ;; Returns a collection of items named `:list`. Although internally collections
+  ;; stores only a vector of ids, this function will return a vector of entities.
+  ;;
+  ;; [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
+  
+  ```
+  "
   ([schema db entity-kw collection-key data]
    (insert-collection schema db entity-kw collection-key data nil))
   ([schema db entity-kw collection-key data meta]
@@ -65,6 +122,7 @@
                               (insert-item schema db entity-kw item))) data))))))
 
 (defn append-collection
+  "Appends items to an existing collection."
   ([schema db entity-kw collection-key data]
    (let [current-meta (get-collection-meta schema db entity-kw collection-key)]
      (append-collection schema db entity-kw collection-key data current-meta)))
@@ -75,7 +133,7 @@
          new-ids (get-in db-with-items c-path)]
      (assoc-in db-with-items c-path (flatten [current-ids new-ids])))))
 
-(defn insert-related [schema db relations entity-kw id item]
+(defn ^:private insert-related [schema db relations entity-kw id item]
   (reduce-kv (fn [db relation-kw [relation-type related-entity-kw]]
                (let [collection-key (relations/get-related-collection-key entity-kw id relation-kw)
                      relation-data (relation-kw item)
@@ -88,21 +146,25 @@
                    (insert-collection-fn schema db related-entity-kw collection-key relation-data))))
              db relations))
 
-(defn insert-meta [db entity-kw meta-key meta]
+(defn insert-meta
+  "Inserts meta data for an entity or collection into the store."
+  [db entity-kw meta-key meta]
   (let [schema {meta-store {:id (partial util/get-meta-id entity-kw meta-key)}}]
     (if (nil? meta)
       (remove-meta db entity-kw meta-key)
       (insert-item schema (util/add-empty-layout db meta-store) meta-store meta))))
 
-(defn remove-item-id-from-named-items [collections id]
+(defn ^:private remove-item-id-from-named-items [collections id]
   (into {} (filter (fn [[key val]]
                      (not= val id)) collections)))
 
-(defn remove-item-id-from-collections [collections id]
+(defn ^:private remove-item-id-from-collections [collections id]
   (update-values collections (fn [val]
                                (filterv (partial not= id) val))))
 
-(defn remove-item [schema db entity-kw id]
+(defn remove-item 
+  "Removes item from the store. It will also remove it from any named-item slots or collections"
+  [schema db entity-kw id]
   (let [c-one-without-item-id (remove-item-id-from-named-items (get-in db [entity-kw :c-one]) id)
         c-many-without-item-id (remove-item-id-from-collections (get-in db [entity-kw :c-many]) id)
         store-without-item (dissoc (get-in db [entity-kw :store]) id)
@@ -114,19 +176,27 @@
         relations (relations/get-relations schema entity-kw)]
     (reduce-kv (partial relations/remove-related-collections entity-kw id) db relations)))
 
-(defn remove-collection-or-named-item [db entity-kw collection-type collection-key]
+(defn ^:private remove-collection-or-named-item [db entity-kw collection-type collection-key]
   (let [collections-without (dissoc (get-in db [entity-kw collection-type]) collection-key)]
     (-> db
         (remove-meta entity-kw collection-key)
         (assoc-in [entity-kw collection-type] collections-without))))
 
-(defn remove-named-item [db entity-kw collection-key]
+(defn remove-named-item
+  "Removes the named-item slot. Entity will still be stored in the internal store, but
+  won't be available through the named-item slot."
+  [db entity-kw collection-key]
   (remove-collection-or-named-item db entity-kw :c-one collection-key))
 
-(defn remove-collection [db entity-kw collection-key]
+(defn remove-collection
+  "Removes the collection. Entities referenced from the collection will still be stored in
+  the internal store, but won't be available through the collection API."
+  [db entity-kw collection-key]
   (remove-collection-or-named-item db entity-kw :c-many collection-key))
 
-(defn remove-meta [db entity-kw id]
+(defn remove-meta
+  "Removes any meta data stored on the entity or collection"
+  [db entity-kw id]
   (let [meta-key (util/get-meta-id entity-kw id)
         current-meta (get-in db [meta-store :store meta-key])]
     (if (nil? current-meta)
@@ -135,21 +205,27 @@
             store-without-item (dissoc store meta-key)]
         (assoc-in db [meta-store :store] (or store-without-item {}))))))
 
-(defn get-item-meta [schema db entity-kw id]
+(defn get-item-meta
+  "Gets meta data for an entity."
+  [schema db entity-kw id]
   (if (= entity-kw meta-store)
     nil
     (get-item-by-id schema db meta-store (util/get-meta-id entity-kw id))))
 
-(defn get-named-item-meta [schema db entity-kw collection-key]
+(defn get-named-item-meta
+  "Returns the meta data for an entity referenced in the named item slot."
+  [schema db entity-kw collection-key]
   (let [item (get-named-item schema db entity-kw collection-key false)
         meta-key (if (nil? item)
                    collection-key
                    (util/get-item-id schema entity-kw item))]
     (get-item-meta schema db entity-kw meta-key)))
 
-(def get-collection-meta get-item-meta)
+(def get-collection-meta
+  "Returns the meta data for a collection."
+  get-item-meta)
 
-(defn get-related-items-fn [schema db entity-kw id]
+(defn ^:private get-related-items-fn [schema db entity-kw id]
   (fn [item relation-kw [relation-type related-entity-kw]]
     (let [collection-key (relations/get-related-collection-key entity-kw id relation-kw)
           get-collection-fn (if (= relation-type :one)
@@ -158,20 +234,47 @@
           data-fn (partial get-collection-fn schema db related-entity-kw collection-key) ]
       (assoc item relation-kw data-fn))))
 
-(defn get-item-by-id [schema db entity-kw id]
+(defn get-item-by-id
+  "Gets an entity from the store by the id"
+  [schema db entity-kw id]
   (let [relations (relations/get-relations schema entity-kw)
         item (get-in db [entity-kw :store id])]
     (-> item
         (with-meta (get-item-meta schema db entity-kw id))
         ((partial reduce-kv (get-related-items-fn schema db entity-kw id)) relations))))
 
-(defn get-collection [schema db entity-kw collection-key]
+(defn get-collection
+  "Gets collection by it's key. Internally collections store only entity ids, but
+  this function will return a collection of entities based on the ids stored in the collection
+
+  
+  ```clojure
+  (def entity-db {})
+  (def schema {:foos {:id :id}})
+
+  (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
+
+  (def new-entity-db (insert-collection schema entity-db :foos :list collection))
+  ;; Returns the new version of entity db. Each item will be stored
+  ;; in the internal store map and collection will contain only the
+  ;; item ids.
+
+  (get-collection schema new-entity-db :foos :list)
+  ;; Returns a collection of items named `:list`. Although internally collections
+  ;; stores only a vector of ids, this function will return a vector of entities.
+  ;;
+  ;; [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
+  ```
+  "
+  [schema db entity-kw collection-key]
   (let [ids (get-in db [entity-kw :c-many collection-key])]
     (with-meta
       (into [] (map (partial get-item-by-id schema db entity-kw) ids))
       (get-collection-meta schema db entity-kw collection-key))))
 
-(defn get-named-item 
+(defn get-named-item
+  "Gets an entity referenced from the named item slot. Internally named slots store
+  only entity ids but this function will return an entity based on the id."
   ([schema db entity-kw collection-key]
    (get-named-item schema db entity-kw collection-key true))
   ([schema db entity-kw collection-key include-meta]
@@ -183,7 +286,7 @@
          (get-named-item-meta schema db entity-kw collection-key))
        item))))
 
-(defn vacuum-entity-db [db entity-kw]
+(defn ^:private vacuum-entity-db [db entity-kw]
   (let [store (get-in db [entity-kw :store])
         ids (keys store)
         locked-one-ids (vals (get-in db [entity-kw :c-one]))
@@ -198,12 +301,18 @@
               [entity-kw :store]
               (select-keys store locked-ids))))
 
-(defn vacuum [db]
+(defn vacuum
+  "Removes orphaned entities from the EntityDB. Any entity that is not referenced
+  in a collection or in a named item slot will be removed from the EntityDB"
+  [db]
   (let [entity-kws (keys db)
         entity-kws-without-meta (filterv (fn [k] (not (= k meta-store))) entity-kws)]
     (reduce vacuum-entity-db db entity-kws-without-meta)))
 
-(defn make-dbal [schema]
+(defn make-dbal
+  "Returns a map with all public functions. These functions will have `schema`
+  partially applied to them so you don't have to pass the schema around."
+  [schema]
   {:insert-item (partial (util/ensure-layout insert-item) schema)
    :insert-named-item (partial (util/ensure-layout insert-named-item) schema)
    :insert-collection (partial (util/ensure-layout insert-collection) schema)
