@@ -60,7 +60,7 @@
                          (events/unlisten h EventType/NAVIGATE listener)))))
 
 (defn ^:private render-to-element! [state]
-  (let [reify-main-component
+  (let [resolve-main-component
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
                   :url-fn (fn [params]
@@ -72,7 +72,7 @@
                                         (reaction
                                          (:route @app-db))))})
         main-component (-> (ui/system (:components state) (or (:subscriptions state) {}))
-                           (reify-main-component))
+                           (resolve-main-component))
         container (:html-element state)] 
     (reagent/render-component [main-component] container) 
     (add-stop-fn state (fn [s] 
