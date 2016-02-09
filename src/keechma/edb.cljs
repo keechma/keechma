@@ -22,12 +22,12 @@
 
   ```clojure
   (def schema {:foos {:id :id}})
-  (def entity-db {})
+  (def entity-db-v1 {})
 
   (def item {:id 1 :name \"Foo\"})
   (def item-meta {:is-loading false})
 
-  (insert-item schema db :foos item item-meta)
+  (def entity-db-v2 (insert-item schema entity-db-v1 :foos item item-meta))
   ;; Returns the new version of the entity-db with the item inserted
   ;; inserted into the store
   ```
@@ -59,14 +59,14 @@
   the identity of the item.
    
   ```clojure
-  (def entity-db {})
+  (def entity-db-v1 {})
   (def schema {:foos {:id :id}})
 
-  (def new-entity-db (insert-named-item schema entity-db :foos :current {:id 1 :name \"foo\"}))
+  (def entity-db-v2 (insert-named-item schema entity-db-v1 :foos :current {:id 1 :name \"foo\"}))
   ;; Returns the new version of the entity-db with the entity saved in the store and
   ;; referenced from the `:current` named item slot.
 
-  (get-named-item schema new-entity-db :foos :current)
+  (get-named-item schema entity-db-v2 :foos :current)
   ;; Returns the entity referenced from the `:current` named slot.
 
   ```
@@ -90,17 +90,17 @@
   of entity identities.
 
   ```clojure
-  (def entity-db {})
+  (def entity-db-v1 {})
   (def schema {:foos {:id :id}})
 
   (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
 
-  (def new-entity-db (insert-collection schema entity-db :foos :list collection))
+  (def entity-db-v2 (insert-collection schema entity-db-v1 :foos :list collection))
   ;; Returns the new version of entity db. Each item will be stored
   ;; in the internal store map and collection will contain only the
   ;; item ids.
 
-  (get-collection schema new-entity-db :foos :list)
+  (get-collection schema entity-db-v2 :foos :list)
   ;; Returns a collection of items named `:list`. Although internally collections
   ;; stores only a vector of ids, this function will return a vector of entities.
   ;;
@@ -122,7 +122,33 @@
                               (insert-item schema db entity-kw item))) data))))))
 
 (defn append-collection
-  "Appends items to an existing collection."
+  "Appends items to an existing collection.
+
+  ```clojure
+  (def entity-db-v1 {})
+  (def schema {:foos {:id :id}})
+
+  (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
+
+  (def entity-db-v2 (insert-collection schema entity-db-v1 :foos :list collection))
+  ;; Returns the new version of entity db. Each item will be stored
+  ;; in the internal store map and collection will contain only the
+  ;; item ids.
+
+  (get-collection schema entity-db-v2 :foos :list)
+  ;; Returns a collection of items named `:list`. Although internally collections
+  ;; stores only a vector of ids, this function will return a vector of entities.
+  ;;
+  ;; [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
+
+  
+  (def entity-db-v3 (append-collection schema entity-db-v2 :foos :list [{:id 3 :name \"baz}]))
+  
+  (get-collection schema entity-db-v3 :foos :list)
+  ;; Returns [{:id 1 :name \"foo\"} {:id 2 :name \"bar} {:id 3 :name \"baz\"}]
+  
+  ```
+  "
   ([schema db entity-kw collection-key data]
    (let [current-meta (get-collection-meta schema db entity-kw collection-key)]
      (append-collection schema db entity-kw collection-key data current-meta)))
@@ -163,7 +189,33 @@
                                (filterv (partial not= id) val))))
 
 (defn remove-item 
-  "Removes item from the store. It will also remove it from any named-item slots or collections"
+  "Removes item from the store. It will also remove it from any named-item slots or collections.
+
+  ```clojure
+  (def entity-db-v1 {})
+  (def schema {:foos {:id :id}})
+
+  (def foo-entity {:id 1 :name \"Bar\"})
+  
+  ;; insert `foo-entity` in the `:current` named item slot
+  (def entity-db-v2 (insert-named-item schema entity-db-v1 :foos :current foo-entity))
+
+  ;; insert `foo-entity` as a part of the `:list` collection
+  (def entity-db-v3 (insert-collection schema entity-db-v2 :foos :list [foo-entity]))
+
+  ;; get `foo-entity` from the entity-db
+  (get-item-by-id schema entity-db-v3 :foos 1)
+  ;; returns `foo-entity`
+
+  (def entity-db-v4 (remove-item schema entity-db :foos 1))
+
+  (get-named-item schema entity-db-v4 :foos :current)
+  ;; returns `nil`
+
+  (get-collection schema entity-db-v4 :foos :list)
+  ;; returns []
+  ```
+  "
   [schema db entity-kw id]
   (let [c-one-without-item-id (remove-item-id-from-named-items (get-in db [entity-kw :c-one]) id)
         c-many-without-item-id (remove-item-id-from-collections (get-in db [entity-kw :c-many]) id)
@@ -184,13 +236,55 @@
 
 (defn remove-named-item
   "Removes the named-item slot. Entity will still be stored in the internal store, but
-  won't be available through the named-item slot."
+  won't be available through the named-item slot.
+
+  ```clojure
+  (def entity-db-v1 {})
+  (def schema {:foos {:id :id}})
+
+  (def foo-entity {:id 1 :name \"bar\"})
+
+  (def entity-db-v2 (insert-named-item schema entity-db-v1 :foos :current foo-entity))
+  
+  (get-named-item schema entity-db-v1 :foos :current)
+  ;; Returns `{:id 1 :name \"bar\"}`
+
+  (def entity-db-v3 (remove-named-item schema entity-db-v2 :foos :current))
+
+  (get-named-item schema entity-db-v2 :foos :current)
+  ;; Returns `nil`
+
+  (get-item-by-id schema entity-db-v2 :foos 1)
+  ;; Returns `{:id 1 :name \"bar\"}`
+  ```
+  "
   [db entity-kw collection-key]
   (remove-collection-or-named-item db entity-kw :c-one collection-key))
 
 (defn remove-collection
   "Removes the collection. Entities referenced from the collection will still be stored in
-  the internal store, but won't be available through the collection API."
+  the internal store, but won't be available through the collection API.
+
+  ```clojure
+  (def entity-db-v1 {})
+  (def schema {:foos {:id :id}})
+
+  (def foo-entity {:id 1 :name \"bar\"})
+
+  (def entity-db-v2 (insert-collection schema entity-db-v1 :foos :list [foo-entity]))
+  
+  (get-collection schema entity-db-v2 :foos :list)
+  ;; Returns `[{:id 1 :name \"bar\"}]`
+
+  (def entity-db-v3 (remove-collection schema entity-db-v2 :foos :list))
+
+  (get-collection schema entity-db-v2 :foos :list)
+  ;; Returns `nil`
+
+  (get-item-by-id schema entity-db-v2 :foos 1)
+  ;; Returns `{:id 1 :name \"bar\"}`
+  ```
+  "
   [db entity-kw collection-key]
   (remove-collection-or-named-item db entity-kw :c-many collection-key))
 
@@ -249,17 +343,17 @@
 
   
   ```clojure
-  (def entity-db {})
+  (def entity-db-v1 {})
   (def schema {:foos {:id :id}})
 
   (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
 
-  (def new-entity-db (insert-collection schema entity-db :foos :list collection))
+  (def entity-db-v2 (insert-collection schema entity-db-v1 :foos :list collection))
   ;; Returns the new version of entity db. Each item will be stored
   ;; in the internal store map and collection will contain only the
   ;; item ids.
 
-  (get-collection schema new-entity-db :foos :list)
+  (get-collection schema entity-db-v2 :foos :list)
   ;; Returns a collection of items named `:list`. Although internally collections
   ;; stores only a vector of ids, this function will return a vector of entities.
   ;;

@@ -110,8 +110,6 @@
                    (assoc :subscriptions subscriptions)
                    (assoc :components child-renderers))))))
 
-(defrecord UIComponent [component-deps subscription-deps renderer]
-  IUIComponent)
 
 (defn component->renderer [parent component]
   (renderer (-> component 
@@ -119,6 +117,10 @@
                 (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
                 (assoc :current-route-fn (:current-route-fn parent))
                 (assoc :app-db (:app-db parent)))))
+
+
+(defrecord UIComponent [component-deps subscription-deps renderer]
+  IUIComponent)
 
 (defn constructor [opts]
   (let [defaults {:component-deps []

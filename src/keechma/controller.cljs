@@ -2,19 +2,88 @@
   (:require [cljs.core.async :refer [put!]]))
 
 (defprotocol IController
-  (params [this route])
-  (start [this params db])
-  (stop [this params db])
-  (execute [this command-name] [this command-name args])
-  (handler [this app-db-atom in-chan out-chan])
-  (send-command [this command-name] [this command-name args])
-  (is-running? [this]))
+  "Controllers in Keechma are the place where you put the code
+  that has side-effects. They are managed by the [[keechma.controller-manager]]
+  which will start them or stop them based on the current route.
+
+  Each controller implements the `params` function. `params` function returns
+  a subset of the route params that are the controller is interested in.
+
+  For instance let's say that you have a `UserController` which should be
+  running only when the user is on the route `/users`:
+
+  ```clojure
+  ;; let's say that your routes are defined like this:
+  
+  (def routes [\":page\"]) ;; Routes are managed by the app-state library.
+
+  ;; When user goes to the url `/users` the params function would receive
+  ;; something that looks like this:
+
+  {:data {:page \"users\"}}
+
+  ;; `params` function returns `true` only when user is on the `:page` \"users\"
+  (defrecord UserController []
+    IController
+    (params [_ route-params]
+      (when (= \"users\" (get-in route-params [:data :page]))
+       true)))
+  ```
+
+  When `params` function returns a non `nil` value the controller will be started:
+
+  1. Controller's `start` function will be synchronously called with the current
+  application state. This function returns a new version of the state if needed.
+  (if the `start` function is not doing any changes to the app-state it must return
+  the received version)
+  2. Controller's `handler` function will be called - this function will receive
+  application state atom, channel through which the controller receives the commands
+  (`in-chan`) and the channel through which the controller can send commends to
+  other controllers (`out-chan`).
+
+  When `params` function returns a `nil` value that instance of the controller will
+  be stopped:
+
+  1. Controller's `stop` function will be synchronously called with the current
+  application state. This function returns a new version of the state if needed - 
+  use this function to clean up any data loaded by the controller (if the `stop` 
+  function is not doing any changes to the app-state it must return the received
+  version).
+  2. Controller's `in-chan` (through which it can receive commands) will be closed.
+
+  Controller's `start` and `stop` functions can asynchronuously send commends to the
+  controller. Calling `(execute controller-instance :command)` will put that command
+  on the controller's `in-chan`. Controller can react to these commands from the 
+  `handler` function. 
+
+  "
+  (params [this route-params]
+    "Receives the `route-params` and returns either the `params` for the controller or `nil`")
+  (start [this params app-db]
+    "Called when the controller is started. Receives the controller `params` (returned by the
+    `params` function) and the application state. It must return the application state.")
+  (stop [this params app-db]
+    "Called when the controller is stopped. Receives the controller `params` (returned by the
+    `params` function) and the application state. It must return the application state.")
+  (execute [this command-name] [this command-name args]
+    "Puts the command on the controller's `in-chan` which is passed as an argument to the 
+    `handler` function. Can be called from the `start` and `stop` functions.")
+  (handler [this app-db-atom in-chan out-chan]
+    "Called after the `start` function. You can listen to the commands on the `in-chan` 
+    inside the `go` block. This is the function in which you implement anything that reacts
+    to the user commands (coming from the UI).")
+  (send-command [this command-name] [this command-name args]
+    "Sends a command to another controller")
+  (is-running? [this]
+    "Returns `true` if this controller is still running. You can use this if you have some
+    kind of async action, and you want to make sure that the controller is still running 
+    when you receive the results."))
 
 (extend-type default
   IController
-  (params [_ route] route)
-  (start [_ params db] db)
-  (stop [_ params db] db)
+  (params [_ route-params] route-params)
+  (start [_ params app-db] app-db)
+  (stop [_ params app-db] app-db)
   (handler [_ _ _ _])
   (execute
     ([this command-name]

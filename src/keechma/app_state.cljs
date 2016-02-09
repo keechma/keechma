@@ -10,16 +10,16 @@
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
-(defn app-db []
+(defn ^:private app-db []
   (atom {:route {}
          :entity-db {}
          :kv {}
          :internal {}}))
 
-(defn history []
+(defn ^:private history []
   (History.))
 
-(defn default-config []
+(defn ^:private default-config []
   {:routes []
    :routes-chan (chan)
    :route-prefix "#!"
@@ -30,13 +30,13 @@
    :html-element nil
    :stop-fns []})
 
-(defn add-stop-fn [state stop-fn]
+(defn ^:private add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
 
-(defn expand-routes [state]
+(defn ^:private expand-routes [state]
   (assoc state :routes (router/expand-routes (:routes state))))
 
-(defn bind-history! [state]
+(defn ^:private bind-history! [state]
   (let [routes-chan (:routes-chan state)
         route-prefix (:route-prefix state)
         routes (:routes state)
@@ -59,7 +59,7 @@
     (add-stop-fn state (fn [_]
                          (events/unlisten h EventType/NAVIGATE listener)))))
 
-(defn render-to-element! [state]
+(defn ^:private render-to-element! [state]
   (let [reify-main-component
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
@@ -78,7 +78,7 @@
     (add-stop-fn state (fn [s] 
                          (reagent/unmount-component-at-node container)))))
 
-(defn start-controllers [state]
+(defn ^:private start-controllers [state]
   (let [controllers (:controllers state)
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
@@ -89,12 +89,48 @@
                            ((:stop manager))
                            s)))))
 
-(defn log-state [state]
+(defn ^:private log-state [state]
   (do
     (.log js/console (clj->js state))
     state))
 
-(defn start! [config]
+(defn start!
+  "Starts the application. It receives the application config `map` as an argument.
+
+  Application config contains all the parts needed to run the application:
+
+  - Route defintions
+  - Controllers
+  - UI subscriptions
+  - UI components 
+  - HTML element to which the component should be mounted
+  - Routes chan (through which the route changes will be communicated)
+  - Commands chan (through which the UI sends the commands to the controllers)
+
+  `start!` function returns the updated config map which can be passed to the `stop!`
+  function to stop the application.
+
+  Example:
+
+  ```clojure
+  (def app-config {:controllers {:users (->users/Controller)}
+                   :subscriptions {:user-list (fn [app-db-atom])}
+                   :components {:main layout/component
+                                :users users/component}
+                   :html-element (.getElementById js/document \"app\")})
+  ```
+
+  If any of the params is missing, the defaults will be used.
+
+  When the application is started, the following happens:
+
+  1. Routes are expanded (converted to regexps, etc.)
+  2. Application binds the listener the history change event
+  3. Controller manager is started
+  4. Application is mounted into the DOM
+  
+  "
+  [config]
   (let [config (merge (default-config) config)]
     (-> config
         (expand-routes)
@@ -103,6 +139,20 @@
         (render-to-element!))))
 
 (defn stop!
+  "Stops the application. `stop!` function receives the following as the arguments:
+
+  - `config` - App config map returned from the `start!` function
+  - `done` - An optional callback function that will be called when the application
+  is stopped.
+
+  Purpose of the `stop!` function is to completely clean up after the application. When the
+  application is stopped, the following happens:
+
+  1. History change event listener is unbound
+  2. Controller manager and any running controllers are stopped
+  3. Any channels used by the app (`routes-chan`, `commands-chan`,...) are closed
+  4. Application is unmounted and removed from the DOM
+  "
   ([config]
    (stop! config (fn [])))
   ([config done]

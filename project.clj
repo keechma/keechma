@@ -23,7 +23,8 @@
   :source-paths ["src"]
 
   :codox {:language :clojurescript
-          :metadata {:doc/format :markdown}}
+          :metadata {:doc/format :markdown}
+          :namespaces [keechma.app-state keechma.controller keechma.controller-manager keechma.edb keechma.router keechma.ui-component]}
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
   
