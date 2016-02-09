@@ -1,6 +1,6 @@
 # Introduction to Keechma
 
-Keechma is an attempt to formalize solutions to most common problems in frontend application development. It is implemented in ClojureScript, using the [Reagent](https://github.com/reagent-project/reagent) library, and is heavily inspired by [Re/Frame](https://github.com/Day8/re-frame). 
+Keechma is an attempt to formalize solutions to the most common problems in frontend application development. It is implemented in ClojureScript, using the [Reagent](https://github.com/reagent-project/reagent) library, and is heavily inspired by [Re/Frame](https://github.com/Day8/re-frame). 
 
 All parts are built in modular, decoupled way, but together they allow you to write apps that have the following properties:
 

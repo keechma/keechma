@@ -1,6 +1,15 @@
 # Keechma
 
-Keechma is a set of ClojureScript libraries that function as a backbone for your frontend app.
+Keechma is an attempt to formalize solutions to most common problems in frontend application development. It is implemented in ClojureScript, using the [Reagent](https://github.com/reagent-project/reagent) library, and is heavily inspired by [Re/Frame](https://github.com/Day8/re-frame). 
+
+All parts are built in modular, decoupled way, but together they allow you to write apps that have the following properties:
+
+- Data based routing
+- Unidirectional data flow
+- Decoupled UI
+- Entity store
+- Memory safety
+- Lifecycle hooks
 
 > Kičma (lat. columna vertebralis) is a Croatian word for backbone / spine.
 
