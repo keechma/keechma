@@ -157,7 +157,7 @@
          current-ids (get-in db c-path)
          db-with-items (insert-collection schema db entity-kw collection-key data meta)
          new-ids (get-in db-with-items c-path)]
-     (assoc-in db-with-items c-path (flatten [current-ids new-ids])))))
+     (assoc-in db-with-items c-path (remove nil? (flatten [current-ids new-ids]))))))
 
 (defn prepend-collection
   "Prepends items to an existing collection.
@@ -195,7 +195,7 @@
          current-ids (get-in db c-path)
          db-with-items (insert-collection schema db entity-kw collection-key data meta)
          new-ids (get-in db-with-items c-path)]
-     (assoc-in db-with-items c-path (flatten [new-ids current-ids])))))
+     (assoc-in db-with-items c-path (remove nil? (flatten [new-ids current-ids]))))))
 
 (defn ^:private insert-related [schema db relations entity-kw id item]
   (reduce-kv (fn [db relation-kw [relation-type related-entity-kw]]
