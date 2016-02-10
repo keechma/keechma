@@ -159,6 +159,44 @@
          new-ids (get-in db-with-items c-path)]
      (assoc-in db-with-items c-path (flatten [current-ids new-ids])))))
 
+(defn prepend-collection
+  "Prepends items to an existing collection.
+
+  ```clojure
+  (def entity-db-v1 {})
+  (def schema {:foos {:id :id}})
+
+  (def collection [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}])
+
+  (def entity-db-v2 (insert-collection schema entity-db-v1 :foos :list collection))
+  ;; Returns the new version of entity db. Each item will be stored
+  ;; in the internal store map and collection will contain only the
+  ;; item ids.
+
+  (get-collection schema entity-db-v2 :foos :list)
+  ;; Returns a collection of items named `:list`. Although internally collections
+  ;; stores only a vector of ids, this function will return a vector of entities.
+  ;;
+  ;; [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
+
+  
+  (def entity-db-v3 (prepend-collection schema entity-db-v2 :foos :list [{:id 3 :name \"baz}]))
+  
+  (get-collection schema entity-db-v3 :foos :list)
+  ;; Returns [{:id 3 :name \"baz\"} {:id 1 :name \"foo\"} {:id 2 :name \"bar}]
+  
+  ```
+  "
+  ([schema db entity-kw collection-key data]
+   (let [current-meta (get-collection-meta schema db entity-kw collection-key)]
+     (prepend-collection schema db entity-kw collection-key data current-meta)))
+  ([schema db entity-kw collection-key data meta]
+   (let [c-path [entity-kw :c-many collection-key]
+         current-ids (get-in db c-path)
+         db-with-items (insert-collection schema db entity-kw collection-key data meta)
+         new-ids (get-in db-with-items c-path)]
+     (assoc-in db-with-items c-path (flatten [new-ids current-ids])))))
+
 (defn ^:private insert-related [schema db relations entity-kw id item]
   (reduce-kv (fn [db relation-kw [relation-type related-entity-kw]]
                (let [collection-key (relations/get-related-collection-key entity-kw id relation-kw)
@@ -411,6 +449,7 @@
    :insert-named-item (partial (util/ensure-layout insert-named-item) schema)
    :insert-collection (partial (util/ensure-layout insert-collection) schema)
    :append-collection (partial (util/ensure-layout append-collection) schema)
+   :prepend-collection (partial (util/ensure-layout prepend-collection) schema)
    :insert-meta insert-meta
    :remove-item (partial (util/ensure-layout remove-item) schema)
    :remove-named-item remove-named-item 

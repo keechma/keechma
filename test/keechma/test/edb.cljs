@@ -107,6 +107,24 @@
                         :latest 
                         [{:id 3} {:id 4}])))))
 
+(deftest prepend-collection []
+  (let [schema {:notes {}}
+        db {:notes {:store {1 {:id 1} 2 {:id 2}}
+                    :c-one {}
+                    :c-many {:latest [1 2]}}}
+        expected-db {:notes {:store {1 {:id 1}
+                                     2 {:id 2}
+                                     3 {:id 3}
+                                     4 {:id 4}}
+                             :c-one {}
+                             :c-many {:latest [3 4 1 2]}}}]
+    (is (= expected-db (edb/prepend-collection
+                        schema
+                        db
+                        :notes 
+                        :latest 
+                        [{:id 3} {:id 4}])))))
+
 (deftest get-named-item []
   (let [schema {:notes {}}
         note-1 {:id 1 :title "Note title 1"}
