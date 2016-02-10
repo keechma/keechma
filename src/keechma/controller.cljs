@@ -1,5 +1,6 @@
 (ns keechma.controller
-  (:require [cljs.core.async :refer [put!]]))
+  (:require [cljs.core.async :refer [put!]])
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defprotocol IController
   "Controllers in Keechma are the place where you put the code
@@ -99,3 +100,22 @@
        this)))
   (is-running? [this]
     (= this ((:running this)))))
+
+(defn dispatcher
+  "Helper function to dispatch commands from the `handler` function.
+
+  Most of the time, handler function will just dispatch the commands
+  to other functions. This functions provides a shortcut for that case.
+
+  ```clojure
+  (defrecord Controller []
+    IController
+    (handler [_ app-db-atom in-chan _]
+      (dispatcher app-db-atom in-chan {:command-name some-fn})))
+  ```"
+  [app-db-atom in-chan actions]
+  (go (loop []
+        (let [[command args] (<! in-chan)
+              action-fn (get actions command)]
+          (when action-fn (action-fn app-db-atom args))
+          (when command (recur))))))
