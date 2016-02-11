@@ -14,14 +14,6 @@
   (let [c (tu/new-container!)]
     [c #(tu/unmount! c)]))
 
-(defrecord AppStartController [inner-app]
-  controller/IController
-  (params [_ _] true)
-  (start [this params app-db] 
-    (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
-  (stop [this params app-db]
-    (app-state/stop! (:inner-app app-db))))
-
 (deftest empty-start-stop []
   (let [[c unmount] (make-container)
         app (app-state/start!
@@ -34,25 +26,37 @@
              (is (= (.-innerText c) "HELLO WORLD"))
              (app-state/stop! app done)))))
 
+(defrecord AppStartController [inner-app]
+  controller/IController
+  (params [_ _] true)
+  ;; When the controller is started, start the inner app and save
+  ;; it's definition inside the app-db
+  (start [this params app-db] 
+    (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
+  ;; When the controller is stopped, stop the inner app
+  (stop [this params app-db]
+    (app-state/stop! (:inner-app app-db))))
 
 (deftest multiple-apps []
   (let [[c unmount] (make-container)
-
+        ;; definition of the inner app
         inner-app
         {:components {:main {:renderer (fn [_] [:div "INNER APP"])}}} 
-
+        ;; renderer function of the main app
+        ;; it gets the inner app's main component from the app
+        ;; state and renders it
         outer-app-renderer 
         (fn [ctx]
           (let [inner-app-sub (ui/subscription ctx :inner-app)]
             (fn []
               (let [inner-app (:main-component @inner-app-sub)]
                 [(or inner-app :div)]))))
-
+        ;; get the inner app from the app-db
         inner-app-sub
         (fn [app-db]
           (reaction
            (:inner-app @app-db)))
-
+        ;; definition of the outer app
         outer-app (app-state/start!
                      {:controllers {:main (->AppStartController inner-app)}
                       :html-element c
