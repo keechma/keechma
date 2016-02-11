@@ -59,8 +59,8 @@
     (add-stop-fn state (fn [_]
                          (events/unlisten h EventType/NAVIGATE listener)))))
 
-(defn ^:private render-to-element! [state]
-  (let [resolve-main-component
+(defn ^:private resolve-main-component [state]
+  (let [resolver
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
                   :url-fn (fn [params]
@@ -70,9 +70,13 @@
                   :current-route-fn (fn []
                                       (let [app-db (:app-db state)]
                                         (reaction
-                                         (:route @app-db))))})
-        main-component (-> (ui/system (:components state) (or (:subscriptions state) {}))
-                           (resolve-main-component))
+                                         (:route @app-db))))})]
+    (assoc state :main-component
+           (-> (ui/system (:components state) (or (:subscriptions state) {}))
+               (resolver)))))
+
+(defn ^:private mount-to-element! [state]
+  (let [main-component (:main-component state) 
         container (:html-element state)] 
     (reagent/render-component [main-component] container) 
     (add-stop-fn state (fn [s] 
@@ -95,7 +99,14 @@
     state))
 
 (defn start!
-  "Starts the application. It receives the application config `map` as an argument.
+  "Starts the application. It receives the application config `map` as the first argument.
+  It receives `boolean` `should-mount?` as the second element. Default value for `should-mount?`
+  is `true`.
+
+  You can pass false to the `should-mount?` argument if you want to start the app,
+  but you want to manually mount the application (for instance another app could manage mounting
+  and unmounting). In that case you can get the main app component at the `:main-component` of the
+  map returned from the `start!` function.
 
   Application config contains all the parts needed to run the application:
 
@@ -127,16 +138,19 @@
   1. Routes are expanded (converted to regexps, etc.)
   2. Application binds the listener the history change event
   3. Controller manager is started
-  4. Application is mounted into the DOM
+  4. Application is (optionally) mounted into the DOM
   
   "
-  [config]
-  (let [config (merge (default-config) config)]
-    (-> config
-        (expand-routes)
-        (bind-history!)
-        (start-controllers)
-        (render-to-element!))))
+  ([config] (start! config true))
+  ([config should-mount?]
+   (let [config (merge (default-config) config)
+         mount (if should-mount? mount-to-element! identity)]
+     (-> config
+         (expand-routes)
+         (bind-history!)
+         (start-controllers)
+         (resolve-main-component)
+         (mount)))))
 
 (defn stop!
   "Stops the application. `stop!` function receives the following as the arguments:

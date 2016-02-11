@@ -147,7 +147,7 @@
 (defn ^:private component->renderer [parent component]
   (renderer (-> component 
                 (assoc :commands-chan (:commands-chan parent))
-                (assoc :url-fn (or (:url-fn component) (:url-fn parent)))
+                (assoc :url-fn (:url-fn parent))
                 (assoc :current-route-fn (:current-route-fn parent))
                 (assoc :app-db (:app-db parent)))))
 
