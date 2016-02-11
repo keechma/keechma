@@ -13,7 +13,7 @@
   (url [this params]
     "Returns a URL based on the params. It will use the `:url-fn` that is injected
     from the outside to generate the URL based on the current app routes.")
-  (subscription [this key]
+  (subscription [this key] [this key args]
     "Returns a subscription based on the key.")
   (component [this key]
     "Returns a component based on the key.")
@@ -34,8 +34,13 @@
   (current-route [this]
     (let [current-route-fn (:current-route-fn this)]
       (current-route-fn)))
-  (subscription [this key]
-    ((get-in this [:subscriptions key])))
+  (subscription
+    ([this key] (subscription this key []))
+    ([this key args]
+     (let [subscription (get-in this [:subscriptions key])]
+       (if (nil? subscription)
+         (throw (js/Error (str "Can't resolve the subscription with key: " key)))
+         (apply subscription args)))))
   (component [this key]
     (get-in this [:components key]))
   (send-command

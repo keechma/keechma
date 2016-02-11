@@ -98,3 +98,17 @@
              (unmount)
              (done)))))
 
+(deftest subscriptions-without-arguments []
+  (let [count-sub (fn [_] 10)
+        component (ui/constructor {:subscriptions {:count-sub count-sub}
+                                   :renderer (fn [ctx] (ui/subscription ctx :count-sub))})
+        renderer (ui/renderer component)]
+    (is (= (renderer) 10))))
+
+
+(deftest subscriptions-with-arguments []
+  (let [count-sub (fn [_ count] count)
+        component (ui/constructor {:subscriptions {:count-sub count-sub}
+                                   :renderer (fn [ctx] (ui/subscription ctx :count-sub [10]))})
+        renderer (ui/renderer component)]
+    (is (= (renderer) 10))))
