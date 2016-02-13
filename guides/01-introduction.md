@@ -1,15 +1,51 @@
 # Introduction to Keechma
 
-Keechma is an attempt to formalize solutions to the most common problems in frontend application development. It is implemented in ClojureScript, using the [Reagent](https://github.com/reagent-project/reagent) library, and is heavily inspired by [Re/Frame](https://github.com/Day8/re-frame). 
+Keechma implements a set of utilities that make it easier to develop predictable, consistent and deterministic applications.
 
-All parts are built in modular, decoupled way, but together they allow you to write apps that have the following properties:
+## Glossary
 
-- Data based routing
-- Unidirectional data flow
-- Decoupled UI
-- Entity store
-- Memory safety
-- Lifecycle hooks
+- **Application**: combination of the routes, controllers, components and subscriptions that work together as a unit. Application state is stored in the internal atom.
+- **Routes**: a list of route patterns that describe how to transform URL to the data and data to the URL.
+- **Controller Manager**: internal part of the application that starts or stops controllers based on the current route params.
+- **Controllers**: Clojure records that implement the `controller/IController` protocol. They are managed by the controller manager. Controllers are responsible for the following:
+    1. When started they (can) mutate the application state and load the data.
+    2. When stopped they (can) mutate the application state and clean up the loaded data.
+    3. When the user sends a command (e.g. by clicking on button) it is routed to the appropriate controller which reacts to the command and mutates the application state accordingly.
+- **Subscriptions**: functions that return a subset of the application state to the UI components.
+- **Entity DB**: stores the application entities.
+    + Entites of the same type with the same identity will be stored only once and referenced from the collections or named item slots.
+    + When subscriptions query the Entity DB they get the real entities back (based on the collection name or named item slot).
+    + Entity state in the Entity DB is be automatically propagated to all collections or named item slots that reference that entity.
+- **UI component system**: a set of utilites that allow you to write decoupled, reusable components. Each component declares it's dependencies which are injected to the component when the application is started.
+
+## The flow
+
+There are two ways to affect the application state:
+
+1. URL change
+2. UI action (e.g. clicking on a button) which sends the command to the controller
+
+### URL change flow
+
+1. When the URL changes, the router will transform the URL into the map that represents the data contained in the URL.
+2. The route params map will be sent to the controller manager which will then start or stop the controllers accordingly. 
+3. Each controller can mutate the application state
+4. Application state changes are propagated to the UI
+
+<div class="diagram"><img src="route_change.svg" alt="URL change diagram" title="URL change diagram"></div>
+
+### UI action flow
+
+1. When the user performs an action (e.g. clicks on a button) the command is sent to the controller manager.
+2. Controller manager routes the command to the appropriate controller (based on the command `:topic`)
+3. Controller reacts to the command and mutates the application state
+4. Application state changes are propagated to the UI
+
+<div class="diagram"><img src="command_sent.svg" alt="UI action diagram" title="UI action diagram"></div>
+
+---
+
+The code that mutates the application state is always placed in the controllers. Controllers are the only place in the application where you have the access to the application state.
 
 ## Credits and Inspiration
 
@@ -20,19 +56,3 @@ The libraries that had the biggest impact on Keechma:
 - [Reagent](https://github.com/reagent-project/reagent) - Keechma would be much harder to implement without Reagent's approach to components
 - [Om](https://github.com/omcljs/om) - Without Om I probably wouldn't try ClojureScript, so Keechma wouldn't exist.
 
-## Differences
-
-So, how does Keechma differ and why you should care?
-
-Keechma has the following components:
-
-- [Router](02-router.html)  - Pure data processing based routing
-- [Entity database](03-controllers.html)  - In memory store for business entities
-- [Controller system](04-entitydb.html) - A way to react to routes and mutate the world
-- [UI System](05-ui-system.html) - A way to write Reagent components that have no global dependencies and are decoupled from data they show and child components they use to render the data.
-
-Biggest and the most important difference of Keechma compared to other frameworks / libraries is that Keechma has no shared globals. All of the Keechma's building blocks are built in pure functionaly way, and parts that are not implement explicit `start` and `stop` which allows them to clean up after themselves.
-
-Keechma as a system is extremely opinionated, but since each of the parts is built in a pure, functional processing way you could take the ingredients and build a completely different thing. 
-
-Everything is complected together in the `src/keechma/app_state.cljs` file. This file implements functions that know how to start and stop the application.

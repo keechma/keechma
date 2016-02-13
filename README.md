@@ -32,14 +32,12 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
     + Each component has it's own context
 - **No shared globals**
     + Router is bound to the application context
-    + App state is bount to the application context
+    + App state is bound to the application context
     + Multiple apps can run at the same time, each with it's own state
 
 ## Documentation
 
 Read the [guides](http://keechma.com/01-introduction.html) or the [API docs](http://keechma.com/api/index.html) to find out more about Keechma.
-
----
 
 ## Name
 
