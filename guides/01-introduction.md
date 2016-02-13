@@ -32,7 +32,7 @@ There are two ways to affect the application state:
 3. Each controller can mutate the application state
 4. Application state changes are propagated to the UI
 
-<div class="diagram"><img src="route_change.svg" alt="URL change diagram" title="URL change diagram"></div>
+<div class="diagram diagram--narrow"><img src="route_change.svg" alt="URL change diagram" title="URL change diagram"></div>
 
 ### UI action flow
 
@@ -41,7 +41,7 @@ There are two ways to affect the application state:
 3. Controller reacts to the command and mutates the application state
 4. Application state changes are propagated to the UI
 
-<div class="diagram"><img src="command_sent.svg" alt="UI action diagram" title="UI action diagram"></div>
+<div class="diagram diagram--narrow"><img src="command_sent.svg" alt="UI action diagram" title="UI action diagram"></div>
 
 ---
 

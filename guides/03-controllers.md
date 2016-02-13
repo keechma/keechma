@@ -3,63 +3,113 @@
 Controllers in Keechma react to route changes and implement any code that has side effects.
 
 - Controllers make AJAX requests.
-- Controllers mutate application state
-- Controllers can connect to web sockets, etc.
+- Controllers mutate the application state
+- Controllers can connect to web sockets and react to received messages, etc.
 
-Anything that has side effects goes to controllers. This is a place where you put all that ugly stuff that actually runs the application and they let the rest of the app to be beautiful and pure.
+Anything that produces a side effect is implemented in a controller. Controllers are the only place in the application where you have the access to the application state atom.
 
-Controllers are subjects to the route. They have a strict lifecycle which depends on the current route. Contrary to the controllers in the other frameworks, controllers in Keechma operate on the route, instead of the UI components.
+For each URL you can have multiple controllers running at once, each one managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsobilites.
 
-I know it seems confusing, but I’ll try to make it clearer soon. Before that I want to talk about application state, how that state gets built and what are the consequences (which will never be the same).
+## How controllers work
 
-Every frontend app has to take care of it’s state, and there are multiple ways how you can enter that state. In Keechma state is strictly derived from the URL, but we still have the following situations:
+Each controller is implemented as a Clojure record which implements the `controller/IController` protocol. This protocol defines multiple functions, but right now we're only interested in the `params` function.
 
-1. User reloads the page and lands to the page with the URL ‘/news/1"
-2. User goes from the route "/news" to route "/news/1"
-3. User is on the route "/news/1" and is posting a comment
+`params` function receives the route params and returns the subset of params that are needed for the controller to run or `nil`. Controller Manager relies on the return value from the `params` function to decide if the controller should be started, stopped or left alone.
 
-These situations are something that you will have to handle in every app you write. There are also different UI layouts that can affect how you react to those routes:
-
-- You could have a "page" based app and transition from "/news" to "/news/1" basically replaces the whole page (except for the menu, and the rest of the chrome)
-- You could have a master - detail layout where you show a list of news in one panel and a detail view of the news with the id 1 in the detail panel
-- Commenting on the news could take you to a new page
-- Commenting on the news could append the comment to the list of the comments
-
-Anyway, this is just a subset of possible scenarios. You need a system that scales across all of them.
-
-You need a system that allows you to do the following:
-
-- When user transitions from "/news" to "/news/1" replace everything on the screen with the news with id 1 but, don’t load anything, you already have it in memory.
-- When user refreshes on the "/news/1" page and you use master - detail layout, load both the news list and the news with id 1 and show them both on the screen
-- When user posts a comment and it’s saved in the DB, send him to the "Thank you page"
-- When user posts a comment and it’s saved in the DB, show that comment on top of the existing comments
-
-It gets complicated fast.
-
-This part of Keechma was the hardest to get right, but I believe I have a solution.
-
-Controllers in Keechma are `clojure` records that implement the `keechma.controller/IController` protocol. This protocol implements the following methods (among others):
-
-- `params` - based on the route params, return params needed for this controller to run or `nil`
-- `start` - synchronously mutate App DB when controller is started
-- `stop` - synchronously mutate App DB when controller is stopped
-- `handler` - function that can asynchronously react to commands
-
-## Controller Lifecycle
-
-With these methods defined, we can make a system that works. Controllers are run by routes. Every time when the URL changes Keechma starts the cycle. This cycle is the core of how applications are built with Keechma.
-
-When URL changes Keechma will do the following:
+Whenever the URL changes, the manager controller will do the following:
 
 1. It will call `params` function of all registered controllers
-2. It will compare returned value to the last returned value (from the previous cycle)
-3. Based on the result it will do the following:
+2. It will compare returned value to the last returned value (returned on the previous URL change)
+3. Based on the returned value it will do the following:
   1. If previous value was `nil` and current value is `nil` it will do nothing
   2. If previous value was `nil` and current value is not `nil` it will start the controller
   3. If previous value was not `nil` and current value is `nil` it will stop the controller
   4. If previous value was not `nil` and current value is not `nil` but those values are same it will do nothing
   5. If previous value was not `nil` and current value is not `nil` but those values are different it will restart the controller
 
-Important thing to mention is that `params` function is a way for the controller to express interest in the current state and do something with it.
+### An example
 
-![Routes Diagram](route_change.svg)
+Let's say you have to implement a note application (similar to Evernote). You have two URLS:
+
+1. A URL that takes you to the list of notes
+2. A URL that will show the list of notes and a detailed view of the selected note.
+
+The routes could look like this:
+
+```clojure
+(def routes [":page"
+             ":page/:note-id"])
+```
+
+- When the user goes to the URL `/starred` the params received by the Controller Manager would be `{:page "starred"}`
+- When the user goes to the URL `/starred/1` the params received by the Controller Manager would be `{:page "starred" :note-id 1}`
+
+Since we need to show the list of notes on both URLs, the `NoteList` controller should just care about the `:page` param:
+
+```clojure
+(defrecord NoteList[]
+    controller/IController
+    (params [_ route-params]
+        (get-in route-params [:data :page])))
+```
+
+The `NoteList` controller's params function ensures that it will be running on each url that has the `:page` param.
+
+The `NoteDetails` controller should run only when the `:note-id` param is present:
+
+```clojure
+(defrecord NoteDetails[]
+    controller/IController
+    (params [_ route-params]
+        (get-in route-params [:data :note-id])))
+```
+
+When the user is on the `/starred` page the `NoteDetails` controller will not be running. It will run only on the `/starred/1` URL. 
+
+<div class="diagram"><img src="controller_manager.svg" alt="Controllers" title="Controllers"></div>
+
+When using the controllers to manage the application state mutations you can ensure the following:
+
+1. State changes will be determenistic.
+    - Based on the route, you know which controllers are running on the page.
+2. Data is loaded at the right time, when the controller is started.
+3. Domain logic is split into small, bite sized parts, each controller implements only the subset of the page logic.
+
+**Controllers in Keechma are future proof**, if the UI layout changed, and the note details page doesn't show the list of the notes anymore, only thing that would need to change would be the `NoteList` controller's `params` function, everything else would remain the same.
+
+## Handling the user actions
+
+Besides the data loading, controllers have another task. They react to user commands.
+
+Whenever the user performs an action - clicks on a button or submits a form, that action is sent to the Controller Manager. Based on the `:topic` this action will be routed to the appropriate controller.
+
+Each controller can implement the `handler` function. That function receives the `in-chan` as an argument. User commands will be placed on that channel, and the controller can take from the channel and react to the command.
+
+```clojure
+(defrecord UserController []
+    controller/IController
+    (handler [_ app-db in-chan __]))
+    ;; Commands will be placed on the `in-chan` which is passed into the handler function
+```
+
+UI components don't define the `:topic` at the sending time, it is globally set for each UI component.
+
+```clojure
+(defn renderer [ctx]
+    [:button {:on-click #(ui/send-command ctx :reload-user)} "Reload User"])
+;; Define a (Reagent) component that sends the command
+
+(defn button-component (ui/constructor {:renderer renderer
+                                 :topic :user})
+;; Set up the component
+```
+
+When you define the application config map (which will be used to start and stop the application), you register each controller under the `key`. This key will be used as a `:topic` on which the controller will listen to commands.
+
+```clojure
+(def app-config {:controllers {:user UserController}
+                 ;; UserController will listen on the `:user` topic
+                 :components {:main button-component}})
+```
+
+Controllers can only receive the commands if they are currently running. Otherwise the command will be dropped.

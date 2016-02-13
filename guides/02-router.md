@@ -1,39 +1,30 @@
 # Router
 
-Keechma is a URL - centric system. URLs drive the application, and app-state is derived from the URL.
+Keechma treats the URL as the single source of the truth. URL's are expected to contain all the data needed to recreate the application state.
 
-Router in Keechma is ported from CanJS and works in the similar way, your routes define patterns in which you transform urls to the map or a map to the URL.
+Router in Keechma is implemented in a way that supports that design decision:
 
-Here's an example:
+1. Routes are just a list of patterns that describe the transformation from URL to the params and from the params to the URL string.
+2. There are no named routes, you give the router a params map and the router returns the URL that is the closest representation of the given data.
+    - Params that weren't matched by the route placeholders will be encoded as the query params.
+3. When the URL is changed the URL will be transformed to the params map (based on the route pattern that is the closest match for a given URL).
 
-```clojure
-;; define routes
-(def routes [[":page", {:page "index"}]
-              ":page/:id"
-              ":page/:id/:action"]) 
+Unlike the other systems, you don't associate the action with the route. Each URL change will results with the following:
 
-(def expanded-routes (keechma.router/expand-routes routes))
+1. URL will be transformed to the params
+2. Route params will be sent to the Controller Manager
+3. Controller Manager will start or stop the controllers according to the route params
 
-(keechma.router/url->map expanded-routes "foo")
-;; {:page "foo"}
+You will never directly interact with the router, it is managed automatically when you start the application.
 
-(keechma.router/url->map expanded-routes "foo/1")
-;; {:page "foo" :id 1}
+Keechma's router has no side - effects (these are set up when the application is started), and has no global shared state. It is implemented in a pure functional way - it only transforms the data between formats.
 
-(keechma.router/map->url expanded-routes {:page "foo"})
-;; "foo"
+Read the [API documentation](api/keechma.router.html) for the router.
 
-(keechma.router/map->url expanded-routes {:page "foo" :id 1})
-;; "foo/1"
 
-(keechma.router/map->url expanded-routes {:page "foo" :id 1 :action "bar" :qux "baz"})
-;; "foo/1/bar?qux=baz"
-```
 
-Few things to point out:
 
-1. Everything is pure, router has no side effects
-2. You never define actions for your routes
-3. Data in - data out
 
-Router has no knowledge of the URL bar in the browser, and it has no global state.
+
+
+
