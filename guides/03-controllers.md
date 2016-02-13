@@ -61,3 +61,5 @@ When URL changes Keechma will do the following:
   5. If previous value was not `nil` and current value is not `nil` but those values are different it will restart the controller
 
 Important thing to mention is that `params` function is a way for the controller to express interest in the current state and do something with it.
+
+![Routes Diagram](route_change.svg)

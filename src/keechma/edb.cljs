@@ -180,10 +180,10 @@
   ;; [{:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
 
   
-  (def entity-db-v3 (prepend-collection schema entity-db-v2 :foos :list [{:id 3 :name \"baz}]))
+  (def entity-db-v3 (prepend-collection schema entity-db-v2 :foos :list [{:id 3 :name \"baz\"}]))
   
   (get-collection schema entity-db-v3 :foos :list)
-  ;; Returns [{:id 3 :name \"baz\"} {:id 1 :name \"foo\"} {:id 2 :name \"bar}]
+  ;; Returns [{:id 3 :name \"baz\"} {:id 1 :name \"foo\"} {:id 2 :name \"bar\"}]
   
   ```
   "
