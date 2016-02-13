@@ -1,69 +1,140 @@
 # UI System
 
-In Keechma UI is completely decoupled. It’s decoupled from the data it renders and it’s decoupled from the child components that are used to render that data.
+Keechma provides you with a way to write decoupled, reusable UI components. It's still using Reagent to implement and render the components, but adds some structure around it to keep the things clean.
 
-## Why?
+## Untangling the UI
 
-In most of the other UI systems, components depend on the global store and react to it’s changes. Keechma uses no globals, so everything gets passed to components when that app starts.
+UI is the messiest part of the frontend application development. By default, the components are coupled to the application state, (sometimes) to their parent components and (almost always) to their child components.
 
-**What does that mean?** When you define a component in Keechma, along the renderer (reagent) function, you define a record that declares that component’s dependencies.
+>Most of our components take the entire app state as their data. Parent components don’t pass their children subcursors with just the bits they care about, they pass them the whole enchilada. Then we have a slew of paths defined in vars, which we use to extract the data we want. It’s not ideal. But it’s what we’ve had to do.
+>
+>From the [Why We Use Om, and Why We’re Excited for Om Next](http://blog.circleci.com/why-we-use-om-and-why-were-excited-for-om-next/) blog post
 
-- It’s data dependencies
-- It’s child component dependencies
+Keechma allows you to decouple the UI components without falling into one of the traps:
 
-In building component based UIs there are two extremes:
+- Passing data from the parent to the child componets
+  + it gets hard to mantain
+  + moving components around is hard
+  + each component must know everything about any component below it
+- Global dependence on the application state
+  + no way to reuse the components
+  + testing is hard
 
-`I get everything from my parent <——————> I depend on the globals and I don’t care`
+To achieve that, you'll need to write slighly more code but it pays off in the end. Let's say that you have a component that renders the list of users. That component is rendered inside the `user-page` component which is rendered inside the `layout` component.
 
-Keechma takes another (middle) approach. Every component (that is stateful) declares it’s dependencies and they get passed to it when the app starts. 
+Neither the `user-page` or the `layout` component care about the data that the `user-list` component needs. User component declares it's dependencies in a Clojure record, and when it's rendered it will get it's dependencies injected from the application.
 
-In Keechma components are defined in terms of systems. A system looks like this:
+The problem with this approach is that when you have a component that works like that, parent component has to be able to render the `user-list` component with the correct context. This means that the `user-page` can't just require the component. It needs to declare it's dependency on the `user-list` component which will allow it to render the correct **version** of the `user-list` component.
+
+That's why Keechma implements the UI systems. UI systems allow components to get the right component and data dependencies injected in.
+
+### Data dependencies
+
+Components declare dependencies on `subscriptions`. Subscriptions are functions that get the `app-state` atom passed in and return the subset of the data (They are almost identical to the [Re/Frame's subscriptions](https://github.com/Day8/re-frame#subscribe) although they are not global).
+
+---
+
+To reiterate, each component needs to declare dependencies on the data it needs to render, and on the child components it needs to render - unless you're using pure components that have no dependencies, they can be required.
+
+Example:
 
 ```clojure
+(defn user-table-renderer [ctx]
+  (fn []
+    (let [user-list (ui/subscription ctx :user-list)]
+      ;; Get the user list subscription, it will be injected from the outside
+      [:table
+        (for [user @user-list]
+          ... render user ...)])))
+
+(defn user-table-component
+  (ui/constructor
+    {:renderer user-list-renderer
+     :subscription-deps [:user-list]}))
+     ;; Declare that this component is dependent on the `:user-list` subscription
+
+(defn user-page-renderer [ctx]
+  [:div
+    (ui/component ctx :user-table)])
+    ;; Get the correctly bound `user-table` component, it will be injected from the outside
+
+(defn user-page-component [ctx]
+  (ui/constructor
+    {:renderer user-page-renderer
+     :component-deps [:user-table]}))
+
 (defn layout-renderer [ctx]
-  [:div.app
-   [:div.sidebar (keechma.ui-component/component ctx :sidebar)] ;; renders the sidebar component
-   [:div.main]])
+  [:div
+    (ui/component ctx :user-page)])
+    ;; Get the correctly bound `user-page` component, that knows how to render the user list. It will be injected from the outside
 
-(def layout-component (keechma.ui-component/constructor
-                       {:renderer layout-renderer
-                        :component-deps [:sidebar]}))
+(defn layout-component
+  (ui/constructor
+    {:renderer layout-renderer
+     :component-deps [:user-page]}))
+    
+(def system
+  (ui/system
+    {:main layout-component ;; system must have the `:main` component defined
+     :user-page user-page-component
+     :user-table user-table-component}
+    {:user-list (fn [app-state])})) ;; this will be injected to the `user-table` component as the `:user-list` subscription
+;; returns the bound `:main` component which can be mounted in the page
 
-(defn sidebar-renderer [ctx]
-  ...reagent code...)
-
-(def sidebar-component (keechma.ui-component/constructor
-                        {:renderer sidebar-renderer
-                         :subscription-deps [:menu]}))
-
-(def system (keechma.ui-component/system
-             {:main layout-component
-              :sidebar sidebar-component}
-             {:menu (fn [app-state] ;; menu subscription
-                     (:menu-items @app-state))})
+(reagent/render-component [system] dom-element)
 ```
 
-System uses the `stuartsierra/component` library to resolve the component dependencies. That way you don't have to write too much boilerplate code if you use only the default mappings.
+There you have it, a completely decoupled UI system. The tradeoff is that you must explicitly declare dependencies for each component.
 
-What are the benefits of this approach? Except of the obvious one, nothing is global, your components are completely reusable out of the box. When defining a system you can override the default component and subscription mappings for each component.
+This way of building UI components has some other advantages too. For instance if later you build an alternative `user-list` component, that is rendering the user list differently, the only place where you must update the code is where you define the system:
+
+```clojure
+(def system
+  (ui/system
+    {:main layout-component ;; system must have the `:main` component defined
+     :user-page user-page-component
+     :user-table my-super-awesome-user-component}))
+;; returns the bound `:main` component which can be mounted in the page
+``` 
+
+Both the `layout` and the `user-page` component will continue to work the same.
+
+### Composing systems
+
+Another advantage is that you can compose UI systems. If you had a big app with a lot of different areas, each area could be a system on it's own:
+
+```clojure
+(def user-page-system
+  (ui/system {...}))
+
+(def news-page-system
+  (ui/system {...}))
+
+(def main-app-system
+  (ui/system
+    {:user-page user-page-system
+     :news-page news-page-system}))
+```
+
+This allows you to easily scale your application, without ever building an unamanageable monolith.
+
+### Manual dependency resolving
 
 Let's say you have a generalized grid component, and you use it in a few places in your project, news list and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
 
 ```clojure
-(def system {:user-grid (keechma.ui-component/resolve-subscription-dep grid-component :list user-list
-             :news-grid (keechma.ui-component/resolve-subscription-dep grid-component :list news-list))})
+(def system 
+  (ui/system
+    {:user-grid (ui-component/resolve-subscription-dep 
+                  grid-component :list user-list)
+     :news-grid (ui-component/resolve-subscription-dep 
+                  grid-component :list news-list))})
 ```
 
 When you manually resolve dependencies, all unresolved dependencies will still be automatically resolved.
 
-Another property of the component systems is that they can be nested. For instance, you could create system for each of the main areas in your app, and then pass them to the main system which will use them to render those areas:
-
-```clojure
-(def user-admin-system (keechma.ui-component/system {...components-here...}))
-(def news-admin-system (keechma.ui-component/system {...components-here...}))
-
-(def main-system (keechma.ui-component/system {:users user-admin-system
-                                               :news news-admin-system})
-```
+---
 
 UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside.
+
+Read the UI system [API docs](api/keechma.ui-component.html).

@@ -1,4 +1,4 @@
-# Example Application
+# Application Walkthrough
 
 Application I'll be using as an example can be found on [Github](http://github.com/keechma/keechma-place-my-order). It is a ClojureScript rewrite of the [DoneJS app](http://place-my-order.com) that is covered in the [DoneJS Guides](http://donejs.com/place-my-order.html).
 
@@ -8,7 +8,7 @@ I picked this as an example app for three reasons:
 2. It's an app that was created to showcase a different framework, so it was interesting to see how the ideas behind the frameworks differ
 3. Place-my-order app implements the backend code (including the WebSockets) which allowed me to focus on frontend code only
 
-I want to point out that DoneJS implementation has more functionality (like server side rendering), and is implemented in a very different way. If you're doing JavaScript developemnt, definitely check it out, it's pretty interesting.
+I want to point out that DoneJS implementation has more functionality (like server side rendering), and is implemented in a very different way. If you're doing JavaScript development, definitely check it out, it's pretty interesting.
 
 ## Let's start
 
@@ -22,20 +22,20 @@ Here is the list of requirements for the app:
 
 1. Landing page is static and shows the intro text and an image
 2. Restaurants page:
-  1. When user loads the restaurant page it shows two select elements
-    - State select box should show a list of states
-    - City select box is populated based on the selected state
-  2. When user selects the state and the city it should load the list of restaurants
-  3. When user clicks on the "Place my order" button it should show the restaurant landing page
-  4. When user clicks on the "Order from this restaurant" button it should show the order form
-    1. Order form has two tabs: "Lunch menu" and "Dinner menu"
-    2. Each tab has a list of meals
-    3. Toggling the meal should update the order total
-  5. When user places the order it is saved and user can place another order
+    1. When user loads the restaurant page it shows two select elements
+        - State select box should show a list of states
+        - City select box is populated based on the selected state
+    2. When user selects the state and the city it should load the list of restaurants
+    3. When user clicks on the "Place my order" button it should show the restaurant landing page
+    4. When user clicks on the "Order from this restaurant" button it should show the order form
+        1. Order form has two tabs: "Lunch menu" and "Dinner menu"
+        2. Each tab has a list of meals
+        3. Toggling the meal should update the order total
+    5. When user places the order it is saved and user can place another order
 3. Order history page
-  1. Order history page shows all placed orders
-  2. Users can change the order status (`new -> preparing -> delivery -> delivered`)
-  3. Order history should be synchronised on all open pages through WebSockets
+    1. Order history page shows all placed orders
+    2. Users can change the order status (`new -> preparing -> delivery -> delivered`)
+    3. Order history should be synchronised on all open pages through WebSockets
 
 ### Routes
 
@@ -70,17 +70,17 @@ Controllers communicate with outer world through channels, and are the only plac
 Place-my-order app is implemented with five controllers:
 
 1. Restaurants controller
-  - Loads the states list
-  - Based on user selection loads the cities list (for the selected state)
-  - Based on user selection loads the restaurants list (for the selected city)
+    + Loads the states list
+    + Based on user selection loads the cities list (for the selected state)
+    + Based on user selection loads the restaurants list (for the selected city)
 2. Restaurant controller
-  - Loads the selected restaurant
+    + Loads the selected restaurant
 3. Order controller
-  - Manages the order creation
-  - Manages the order status change (`new -> preparing -> delivery -> delivered`)
-  - Manages order deletion
+    + Manages the order creation
+    + Manages the order status change (`new -> preparing -> delivery -> delivered`)
+    + Manages order deletion
 4. Order history controller
-  - Loads the order history
+    + Loads the order history
 5. Vacuum controller - I'll talk about this at the end of this article
 
 There can be multiple controllers running for each route, each one of them managing a subset of the app state.
@@ -169,7 +169,7 @@ Notice that it resolves `states` and `cities` components from the context:
 It never passes any data to them, they have their own context partially applied and know how to render themselves based on the current app state.
 
 This way `restaurants-list` component is reusable from the start, we can easily replace components that are used to select the state or the city by remapping the dependencies.
-c
+
 #### UI system
 
 Components are composed to systems. In place-my-order app this happens in the [`src/client/component_system.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/component_system.cljs) file:

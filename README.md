@@ -22,7 +22,7 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
     + Automatically clean up stale data on route chane
     + Automatically set up event listeners on route change (e.g. listener on the WebSocket)
     + Automatically tear down event listeners on route change
-- **Applications are a first class citizens**
+- **Applications are first class citizens**
     + Applications can be started and stopped
     + Applications can be passed around
     + Applications can mount sub - applications

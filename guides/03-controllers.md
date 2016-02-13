@@ -21,11 +21,11 @@ Whenever the URL changes, the manager controller will do the following:
 1. It will call `params` function of all registered controllers
 2. It will compare returned value to the last returned value (returned on the previous URL change)
 3. Based on the returned value it will do the following:
-  1. If previous value was `nil` and current value is `nil` it will do nothing
-  2. If previous value was `nil` and current value is not `nil` it will start the controller
-  3. If previous value was not `nil` and current value is `nil` it will stop the controller
-  4. If previous value was not `nil` and current value is not `nil` but those values are same it will do nothing
-  5. If previous value was not `nil` and current value is not `nil` but those values are different it will restart the controller
+    1. If previous value was `nil` and current value is `nil` it will do nothing
+    2. If previous value was `nil` and current value is not `nil` it will start the controller
+    3. If previous value was not `nil` and current value is `nil` it will stop the controller
+    4. If previous value was not `nil` and current value is not `nil` but those values are same it will do nothing
+    5. If previous value was not `nil` and current value is not `nil` but those values are different it will restart the controller
 
 ### An example
 
@@ -75,7 +75,9 @@ When using the controllers to manage the application state mutations you can ens
 2. Data is loaded at the right time, when the controller is started.
 3. Domain logic is split into small, bite sized parts, each controller implements only the subset of the page logic.
 
-**Controllers in Keechma are future proof**, if the UI layout changed, and the note details page doesn't show the list of the notes anymore, only thing that would need to change would be the `NoteList` controller's `params` function, everything else would remain the same.
+**Controllers in Keechma are future proof**, if the UI layout was changed, and the note details page doesn't show the list of the notes anymore, the only thing that you would need to update is `NoteList` controller's `params` function, everything else would remain the same.
+
+If React allows you to reason about your app like you're re - rendering everything everytime something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
 
 ## Handling the user actions
 
@@ -113,3 +115,5 @@ When you define the application config map (which will be used to start and stop
 ```
 
 Controllers can only receive the commands if they are currently running. Otherwise the command will be dropped.
+
+Read the API docs for the [Controller Manager](api/keechma.controller-manager.html) and for the [Controllers](api/keechma.controller.html).

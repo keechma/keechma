@@ -19,7 +19,7 @@ You will never directly interact with the router, it is managed automatically wh
 
 Keechma's router has no side - effects (these are set up when the application is started), and has no global shared state. It is implemented in a pure functional way - it only transforms the data between formats.
 
-Read the [API documentation](api/keechma.router.html) for the router.
+Read the router [API docs](api/keechma.router.html).
 
 
 
