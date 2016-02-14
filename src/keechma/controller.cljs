@@ -78,7 +78,9 @@
   (is-running? [this]
     "Returns `true` if this controller is still running. You can use this if you have some
     kind of async action, and you want to make sure that the controller is still running 
-    when you receive the results."))
+    when you receive the results.")
+  (redirect [this params]
+    "Redirects the page to the URL based on the params."))
 
 (extend-type default
   IController
@@ -99,7 +101,9 @@
        (put! out-chan [command-name args])
        this)))
   (is-running? [this]
-    (= this ((:running this)))))
+    (= this ((:running this))))
+  (redirect [this params]
+    ((:redirect-fn this) params)))
 
 (defn dispatcher
   "Helper function to dispatch commands from the `handler` function.

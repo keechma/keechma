@@ -68,3 +68,43 @@
              (<! (timeout 100))
              (is (= (.-innerText c) "INNER APP"))
              (app-state/stop! outer-app done)))))
+
+(defrecord RedirectController []
+  controller/IController
+  (start [this app-db _]
+    (controller/redirect this {:foo "bar"})
+    app-db))
+
+(deftest redirect-from-controller []
+  (let [[c unmount] (make-container)
+        app (app-state/start!
+             {:html-element c
+              :controllers {:redirect (->RedirectController)}
+              :components {:main {:renderer (fn [_] [:div])}}})]
+    (async done
+           (go
+             (<! (timeout 100))
+             (is (= (.. js/window -location -hash) "#!?foo=bar"))
+             (set! (.-hash js/location) "")
+             (app-state/stop! app done)))))
+
+(deftest redirect-from-component []
+  (let [[c unmount] (make-container)
+        app (app-state/start!
+             {:html-element c 
+              :components {:main {:renderer
+                                  (fn [ctx]
+                                    [:button
+                                     {:on-click #(ui/redirect ctx {:baz "qux"})}
+                                     "click"])}}})
+         button-node (sel1 c [:button])]
+    (async done
+           (go
+             (<! (timeout 100))
+             (sim/click button-node nil)
+             (<! (timeout 100))
+             (is (= (.. js/window -location -hash) "#!?baz=qux"))
+             (set! (.-hash js/location) "")
+             (app-state/stop! app done)))))
+
+

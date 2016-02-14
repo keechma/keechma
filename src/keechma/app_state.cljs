@@ -30,6 +30,13 @@
    :html-element nil
    :stop-fns []})
 
+(defn ^:private redirect [routes params]
+  (set! (.-hash js/location) (str "#!" (router/map->url routes params))))
+
+(defn ^:private add-redirect-fn-to-controllers [controllers routes]
+  (reduce-kv (fn [m k v]
+            (assoc m k (assoc v :redirect-fn (partial redirect routes)))) {} controllers))
+
 (defn ^:private add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
 
@@ -60,20 +67,22 @@
                          (events/unlisten h EventType/NAVIGATE listener)))))
 
 (defn ^:private resolve-main-component [state]
-  (let [resolver
+  (let [routes (:routes state)
+        resolved
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
                   :url-fn (fn [params]
                             ;; Clean this when HTML5 History API will be implemented
                             (str "#!" (router/map->url (:routes state) params)))
-                  :app-db (:app-db state) 
+                  :app-db (:app-db state)
+                  :redirect-fn (partial redirect routes)
                   :current-route-fn (fn []
                                       (let [app-db (:app-db state)]
                                         (reaction
                                          (:route @app-db))))})]
     (assoc state :main-component
            (-> (ui/system (:components state) (or (:subscriptions state) {}))
-               (resolver)))))
+               (resolved)))))
 
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 
@@ -83,7 +92,9 @@
                          (reagent/unmount-component-at-node container)))))
 
 (defn ^:private start-controllers [state]
-  (let [controllers (:controllers state)
+  (let [routes (:routes state)
+        controllers (add-redirect-fn-to-controllers
+                     (:controllers state) routes)
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
         app-db (:app-db state)

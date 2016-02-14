@@ -13,6 +13,8 @@
   (url [this params]
     "Returns a URL based on the params. It will use the `:url-fn` that is injected
     from the outside to generate the URL based on the current app routes.")
+  (redirect [this params]
+    "Redirects page to the URL generated from params")
   (subscription [this key] [this key args]
     "Returns a subscription based on the key.")
   (component [this key]
@@ -31,6 +33,8 @@
   (url [this params]
     (let [url-fn (:url-fn this)]
       (url-fn params)))
+  (redirect [this params]
+    ((:redirect-fn this) params))
   (current-route [this]
     (let [current-route-fn (:current-route-fn this)]
       (current-route-fn)))
@@ -146,6 +150,7 @@
 
 (defn ^:private component->renderer [parent component]
   (renderer (-> component 
+                (assoc :redirect-fn (:redirect-fn parent))
                 (assoc :commands-chan (:commands-chan parent))
                 (assoc :url-fn (:url-fn parent))
                 (assoc :current-route-fn (:current-route-fn parent))
