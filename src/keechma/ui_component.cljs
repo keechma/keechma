@@ -149,12 +149,12 @@
              {} components))
 
 (defn ^:private component->renderer [parent component]
-  (renderer (-> component 
-                (assoc :redirect-fn (:redirect-fn parent))
-                (assoc :commands-chan (:commands-chan parent))
-                (assoc :url-fn (:url-fn parent))
-                (assoc :current-route-fn (:current-route-fn parent))
-                (assoc :app-db (:app-db parent)))))
+  (renderer (assoc component
+              :redirect-fn (:redirect-fn parent)
+              :commands-chan (:commands-chan parent)
+              :url-fn (:url-fn parent)
+              :current-route-fn (:current-route-fn parent)
+              :app-db (:app-db parent))))
 
 (defn system
   "Creates a component system.
@@ -188,28 +188,28 @@
 
   ```clojure
   (defn layout-renderer [ctx] ;; ctx is `layout-component` record with resolved dependencies
-    [:div.main
-      [:div.sidebar [(component ctx :sidebar)]]]) ;; Resolve the `:sidebar` component
+  [:div.main
+  [:div.sidebar [(component ctx :sidebar)]]]) ;; Resolve the `:sidebar` component
 
   (def layout-component (constructor {:component-deps [:sidebar]
-                                      :renderer layout-renderer}))
+  :renderer layout-renderer}))
 
   (defn sidebar-renderer [ctx]
-    [:div.sidebar
-      [(component ctx :chat-room-list)]) ;; Resolve the `:chat-room-list` component
+  [:div.sidebar
+  [(component ctx :chat-room-list)]) ;; Resolve the `:chat-room-list` component
 
   (def sidebar-component (constructor {:component-deps [:chat-room-list]
-                                       :renderer sidebar-renderer}))
+  :renderer sidebar-renderer}))
 
   (defn chat-room-list-renderer [ctx]
-    (let [chat-rooms (subscription ctx :chat-rooms)])) ;; Resolve the `:chat-rooms` subscription
+  (let [chat-rooms (subscription ctx :chat-rooms)])) ;; Resolve the `:chat-rooms` subscription
 
   (def chat-room-list-component (constructor {:subscription-deps [:chat-rooms]}))
 
   (def main-component (system {:main layout-component ;; Map compnents to keys
-                               :sidebar sidebar-component
-                               :chat-room-list chat-room-list-component}
-                              {:chat-rooms (fn [app-state-atom])})) ;; Map subscriptions to keys
+  :sidebar sidebar-component
+  :chat-room-list chat-room-list-component}
+  {:chat-rooms (fn [app-state-atom])})) ;; Map subscriptions to keys
   ```
   
   In the example above `main-component` will be a Reagent component that can be mounted
