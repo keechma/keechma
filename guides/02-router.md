@@ -11,7 +11,7 @@ Router in Keechma is implemented in a way that supports that design decision:
 
 Unlike the other systems, you don't associate the action with the route. Each URL change will results with the following:
 
-1. URL will be transformed to the params
+1. URL will be transformed into the params map
 2. Route params will be sent to the Controller Manager
 3. Controller Manager will start or stop the controllers according to the route params
 

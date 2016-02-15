@@ -6,7 +6,7 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
 
 - **Deterministic and predictable behavior**
     + Based on the route, you can determine how will the application state look
-    + UI never "requests" tha data it is always provided to it
+    + UI never "requests" the data it is always provided to it
 - **Unidirectional data flow**
     1. Route params are derived from the URL
     2. Application state is derived from the route params
@@ -14,7 +14,7 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
 - **Loose coupling between components**
     + Communication is performed through `core.async` channels
 - **Automatic synchronization of the entity states**
-    + Entitiy is any data loaded into the app that has identity (e.g. `:id` column)
+    + Entity is any data loaded into the app that has identity (e.g. `:id` column)
     + Entities are stored in the EntityDB
     + EntityDB propagates entity state to every place where that entity is displayed in the UI
 - **Enforced lifecycle (and memory safety)**

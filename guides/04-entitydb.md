@@ -6,12 +6,12 @@ EntityDB is a library that handles storage of any kind of entities in your appli
 
 EntityDB solves two problems for you:
 
-1. It allows you to store all entities in the central location 
-2. It ensures the data consistency
+1. It allows you to store all entities in a central location 
+2. It ensures data consistency
     - If you have the same entity rendered in multiple places (for instance in a master - detail layout) - changes to entity in one place will update the other
     - If you have an entity inside some collection, removing it from the EntityDB store will remove it from the collection too
 
-## How it works?
+## How does it work?
 
 EntityDB functions are implemented in a pure functional way, and they operate on the Clojure `map`. 
 
@@ -81,7 +81,7 @@ EntityDB will now expect a nested `author` object for each news entity. That obj
 
 When you insert the an entity into the EntityDB multiple times, the data will be merged with the previous version. This allows you to write the code that looks like this:
 
-```
+```clojure
 (def schema {:users {:id :id}
              :news {:relations {:author [:one :users]}}})
 
@@ -109,7 +109,7 @@ When you insert the an entity into the EntityDB multiple times, the data will be
 ;; Returns {:id 1 :username "retro"}
 ```
 
-When you access the nested relation stored in EntityDB, it will be wrapped inside the function. This ensures that circular dependencies can be resolved.
+When you access the nested relation stored in EntityDB, it will be wrapped inside the function. This ensures that circular relations can be resolved.
 
 ### One to Many relations
 

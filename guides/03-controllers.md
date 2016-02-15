@@ -6,7 +6,7 @@ Controllers in Keechma react to route changes and implement any code that has si
 - Controllers mutate the application state
 - Controllers can connect to web sockets and react to received messages, etc.
 
-Anything that produces a side effect is implemented in a controller. Controllers are the only place in the application where you have the access to the application state atom.
+Anything that produces a side effect is implemented in a controller. **Controllers are the only place in the application where you have the access to the application state atom.**
 
 For each URL you can have multiple controllers running at once, each one managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsobilites.
 
@@ -53,7 +53,7 @@ Since we need to show the list of notes on both URLs, the `NoteList` controller 
         (get-in route-params [:data :page])))
 ```
 
-The `NoteList` controller's params function ensures that it will be running on each url that has the `:page` param.
+The `NoteList` controller's `params` function ensures that it will be running on each url that has the `:page` param.
 
 The `NoteDetails` controller should run only when the `:note-id` param is present:
 

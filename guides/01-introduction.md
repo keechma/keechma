@@ -14,7 +14,6 @@ Keechma implements a set of utilities that make it easier to develop predictable
 - **Subscriptions**: functions that return a subset of the application state to the UI components.
 - **Entity DB**: stores the application entities.
     + Entites of the same type with the same identity will be stored only once and referenced from the collections or named item slots.
-    + When subscriptions query the Entity DB they get the real entities back (based on the collection name or named item slot).
     + Entity state in the Entity DB is be automatically propagated to all collections or named item slots that reference that entity.
 - **UI component system**: a set of utilites that allow you to write decoupled, reusable components. Each component declares it's dependencies which are injected to the component when the application is started.
 
@@ -45,7 +44,7 @@ There are two ways to affect the application state:
 
 ---
 
-The code that mutates the application state is always placed in the controllers. Controllers are the only place in the application where you have the access to the application state.
+The code that mutates the application state is always placed in the controllers. **Controllers are the only place in the application where you have the access to the application state.**
 
 ## Credits and Inspiration
 
