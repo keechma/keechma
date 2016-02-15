@@ -77,7 +77,7 @@ When using the controllers to manage the application state mutations you can ens
 
 **Controllers in Keechma are future proof**, if the UI layout was changed, and the note details page doesn't show the list of the notes anymore, the only thing that you would need to update is `NoteList` controller's `params` function, everything else would remain the same.
 
-If React allows you to reason about your app like you're re - rendering everything everytime something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
+If React allows you to reason about your app like you're re - rendering everything every time something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
 
 ## Handling the user actions
 

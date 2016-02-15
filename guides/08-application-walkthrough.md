@@ -113,7 +113,7 @@ When developing frontend applications (in most cases) there are two options:
 - Each component can get its data from the parent
 - Each component depends on some global store and gets its data from there
 
-Both of these have thier own problems, but Keechma takes the middle road. Each component gets the data injected from the outside, but without global dependencies. The way it works is the following:
+Both of these have their own problems, but Keechma takes the middle road. Each component gets the data injected from the outside, but without global dependencies. The way it works is the following:
 
 1. Each component defines the component record which lists the component dependencies, both for data and for the children component it renders
 2. When application is started each component's renderer function (which is a Reagent component) is partially applied with the context that can be used to resolve data and children components.
@@ -315,7 +315,7 @@ The controller file has a bunch of comments which explain what's going on. I rec
 
 Only thing that the `restaurant` controller does is loading of the restaurant based on the slug.
 
-It is reneder by the [`src/client/components/restaurant_detail.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/restaurant_detail.cljs) component.
+It is rendered by the [`src/client/components/restaurant_detail.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/restaurant_detail.cljs) component.
 
 On the page there will be a link that will take us to the restaurant order page.
 
@@ -348,7 +348,7 @@ The order history page is managed by two controllers:
 
 Both controller files have bunch of comments which explain what's going on. I recommend you to read them before you continue.
 
-The order history controller is repsonsible for loading of the order history, and the order controller manages the `status` change for each of the rendered orders.
+The order history controller is responsible for loading of the order history, and the order controller manages the `status` change for each of the rendered orders.
 
 The components used to render this page are:
 
@@ -386,7 +386,7 @@ EntityDB solves this problem in the following way:
 - When you call `edb/insert-collection` or `edb/insert-named-item` it will put the entity in the store, and replace items in the collection or in the named item with the `id` of that item
 - When you call `edb/get-collection` or `edb/get-named-item` it will return whatever is in the global store based on the `id`.
 
-All of this happens under the hood, and we can still use the nice API to interact with the entitydb, but it comes with a cost: When you call `edb/remove-collection` or `edb/remove-named-item` it doesn't really remove anything from the store, it just removes those collections or named items. It works in this way because each item in the store can exist in multiple collections or named items.
+All of this happens under the hood, and we can still use the nice API to interact with the EntityDB, but it comes with a cost: When you call `edb/remove-collection` or `edb/remove-named-item` it doesn't really remove anything from the store, it just removes those collections or named items. It works in this way because each item in the store can exist in multiple collections or named items.
 
 That's why the EntityDB implements the `vacuum` function. This function will go through all stores, and remove items that are not referenced in any collections or named items.
 
