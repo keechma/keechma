@@ -51,7 +51,8 @@
     ([this command]
      (send-command this command nil))
     ([this command args]
-     (put! (:commands-chan this) [[(:topic this) command] args])))
+     (put! (:commands-chan this) [[(:topic this) command] args])
+     nil))
   (renderer [this]
     (let [child-renderers (reduce-kv (fn [c k v]
                                        (assoc c k (component->renderer this v)))

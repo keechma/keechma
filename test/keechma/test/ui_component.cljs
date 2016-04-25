@@ -112,3 +112,16 @@
                                    :renderer (fn [ctx] (ui/subscription ctx :count-sub [10]))})
         renderer (ui/renderer component)]
     (is (= (renderer) 10))))
+
+
+(deftest send-command-returns-nil []
+  (let [commands-chan (chan)
+        component (ui/constructor
+                   {:renderer
+                    (fn [ctx]
+                      (is (= nil (ui/send-command ctx :some-command)))
+                      [:div "Test"])})
+        system (ui/system {:main component})
+        renderer (ui/renderer (assoc system :commands-chan commands-chan))
+        [c unmount] (make-container)]
+    (reagent/render-component [renderer] c)))
