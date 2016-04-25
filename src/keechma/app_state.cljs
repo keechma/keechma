@@ -3,7 +3,7 @@
             [cljs.core.async :refer [put! close! chan timeout]]
             [goog.events :as events]
             [goog.history.EventType :as EventType]
-            [keechma.router :as router]
+            [router.core :as router]
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager])
   (:import goog.History)
@@ -108,6 +108,15 @@
   (do
     (.log js/console (clj->js state))
     state))
+
+(defn restore-app-db [old-app new-app]
+  (let [old-app-db @(:app-db old-app)
+        new-app-db-atom (:app-db new-app)]
+    (reset! new-app-db-atom
+            (merge @new-app-db-atom
+                   (-> old-app-db
+                       (dissoc :internal)
+                       (dissoc :route))))))
 
 (defn start!
   "Starts the application. It receives the application config `map` as the first argument.

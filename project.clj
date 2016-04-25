@@ -13,7 +13,9 @@
                  [funcool/cuerdas "0.7.0"]
                  [lein-doo "0.1.6"]
                  [com.stuartsierra/dependency "0.2.0"]
-                 [secretary "1.2.3"]]
+                 [secretary "1.2.3"]
+                 [keechma/router "0.1.0"]
+                 [keechma/entitydb "0.1.0"]]
 
   :plugins [[lein-cljsbuild "1.1.1"]
             [lein-figwheel "0.5.0-1"]
@@ -24,7 +26,7 @@
 
   :codox {:language :clojurescript
           :metadata {:doc/format :markdown}
-          :namespaces [keechma.app-state keechma.controller keechma.controller-manager keechma.edb keechma.router keechma.ui-component]}
+          :namespaces [keechma.app-state keechma.controller keechma.controller-manager keechma.ui-component]}
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
   

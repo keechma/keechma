@@ -19,7 +19,7 @@
         app (app-state/start!
              {:html-element c
               :components {:main {:renderer (fn [_]
-                                             [:div "HELLO WORLD"])}}})]
+                                              [:div "HELLO WORLD"])}}})]
     (async done
            (go
              (<! (timeout 100))
@@ -58,11 +58,11 @@
            (:inner-app @app-db)))
         ;; definition of the outer app
         outer-app (app-state/start!
-                     {:controllers {:main (->AppStartController inner-app)}
-                      :html-element c
-                      :components {:main {:renderer outer-app-renderer
-                                          :subscription-deps [:inner-app]}}
-                      :subscriptions {:inner-app inner-app-sub}})]
+                   {:controllers {:main (->AppStartController inner-app)}
+                    :html-element c
+                    :components {:main {:renderer outer-app-renderer
+                                        :subscription-deps [:inner-app]}}
+                    :subscriptions {:inner-app inner-app-sub}})]
     (async done
            (go
              (<! (timeout 100))
@@ -97,7 +97,7 @@
                                     [:button
                                      {:on-click #(ui/redirect ctx {:baz "qux"})}
                                      "click"])}}})
-         button-node (sel1 c [:button])]
+        button-node (sel1 c [:button])]
     (async done
            (go
              (<! (timeout 100))
@@ -108,3 +108,50 @@
              (app-state/stop! app done)))))
 
 
+(defrecord ClickController []
+  controller/IController
+  (handler [_ app-state-atom in-chan _]
+    (controller/dispatcher app-state-atom in-chan
+                           {:inc-counter (fn [app-state-atom]
+                                           (swap! app-state-atom assoc-in [:kv :counter]
+                                                  (inc (get-in @app-state-atom [:kv :counter]))))})))
+
+(deftest state-restore []
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {:click (->ClickController)}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div
+                                               [:h1 (or @(ui/subscription ctx :counter) 0)]
+                                               [:button
+                                                {:on-click #(ui/send-command ctx :inc-counter)} "INC COUNTER"]])
+                                            :topic :click
+                                            :subscription-deps [:counter]}}
+                        :subscriptions {:counter (fn [app-state-atom]
+                                                   (reaction
+                                                    (get-in @app-state-atom [:kv :counter])))}}
+        app-v1 (app-state/start! app-definition)
+        h1-v1 (sel1 c [:h1])]
+    (async done
+           (go
+             (is (= (.-innerText h1-v1) "0"))
+             (sim/click (sel1 c [:button]) nil)
+             (<! (timeout 10))
+             (is (= (.-innerText h1-v1) "1"))
+             (app-state/stop! app-v1)
+             (<! (timeout 10))
+             (let [app-v2 (app-state/start! app-definition)
+                   h1-v2 (sel1 c [:h1])]
+               (is (= (.-innerText h1-v2) "0"))
+               (app-state/stop! app-v2)
+               (<! (timeout 10))
+               (let [app-v3 (app-state/start! app-definition)
+                     h1-v3 (sel1 c [:h1])]
+                 (app-state/restore-app-db app-v1 app-v3)
+                 (<! (timeout 50))
+                 (is (= (.-innerText h1-v3) "1"))
+                 (sim/click (sel1 c [:button]) nil)
+                 (<! (timeout 10))
+                 (is (= (.-innerText h1-v3) "2"))
+                 (done)))))))
