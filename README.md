@@ -19,7 +19,7 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
     + EntityDB propagates entity state to every place where that entity is displayed in the UI
 - **Enforced lifecycle (and memory safety)**
     + Automatically load data on route change
-    + Automatically clean up stale data on route chane
+    + Automatically clean up stale data on route change
     + Automatically set up event listeners on route change (e.g. listener on the WebSocket)
     + Automatically tear down event listeners on route change
 - **Applications are first class citizens**
