@@ -66,7 +66,7 @@ The `NoteDetails` controller should run only when the `:note-id` param is presen
 
 When the user is on the `/starred` page the `NoteDetails` controller will not be running. It will run only on the `/starred/1` URL. 
 
-<div class="diagram"><img src="controller_manager.svg" alt="Controllers" title="Controllers"></div>
+<div class="diagram"><img src="/controller_manager.svg" alt="Controllers" title="Controllers"></div>
 
 When using the controllers to manage the application state mutations you can ensure the following:
 
