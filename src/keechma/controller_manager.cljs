@@ -66,7 +66,7 @@
       :restart (restart-controller app-db-snapshot controller (running name) config) 
       :stop (stop-controller app-db-snapshot (running name) config)
       :route-changed (do
-                       (send-command-to (running name) :route-changed [(:route-params config)])
+                       (send-command-to (running name) :route-changed (:route-params config))
                        app-db-snapshot))))
 
 (defn ^:private make-controller-change-applier [controllers controllers-params controllers-actions config]
