@@ -10,21 +10,22 @@
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
-(defn ^:private app-db []
-  (atom {:route {}
-         :entity-db {}
-         :kv {}
-         :internal {}}))
+(defn ^:private app-db [initial-data]
+  (atom (merge {:route {}
+                :entity-db {}
+                :kv {}
+                :internal {}}
+               initial-data)))
 
 (defn ^:private history []
   (History.))
 
-(defn ^:private default-config []
+(defn ^:private default-config [initial-data]
   {:routes []
    :routes-chan (chan)
    :route-prefix "#!"
    :commands-chan (chan)
-   :app-db (app-db)
+   :app-db (app-db initial-data)
    :components {}
    :controllers {}
    :html-element nil
@@ -163,7 +164,8 @@
   "
   ([config] (start! config true))
   ([config should-mount?]
-   (let [config (merge (default-config) config)
+   (let [initial-data (or (:init-data config) {})
+         config (merge (default-config initial-data) config)
          mount (if should-mount? mount-to-element! identity)]
      (-> config
          (expand-routes)
