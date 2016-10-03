@@ -147,7 +147,7 @@
              ;;   - restart controllers that were running with the different params (stop the old instance and start the new one)
              ;;   - send "route-changed" command to controllers that were already running
              (let [[val channel] (alts! [stop-route-block route-chan])]
-               (when-not (= channel stop-route-block)
+               (when (and (not= channel stop-route-block) val)
                  (let [route-params val]
                    (reset! app-db (route-changed route-params app-db commands-chan controllers))
                    (recur))))))
@@ -166,5 +166,6 @@
                (close! stop-route-block)
                (close! stop-command-block)
                (doseq [running running-chans] (close! running))
-               (doseq [[k controller] controllers] (close! (:in-chan controller)))))}))
+               (doseq [[k controller] controllers]
+                 (stop-controller @app-db controller {:name (:name controller)}))))}))
 
