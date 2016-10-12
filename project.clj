@@ -1,4 +1,4 @@
-(defproject keechma/keechma "0.2.0-SNAPSHOT"
+(defproject keechma/keechma "0.2.0-SNAPSHOT-1"
   :description "Frontend micro framework for ClojureScript and Reagent"
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/clojurescript "1.7.170"]
                  [org.clojure/core.async "0.2.374"]
-                 [reagent "0.6.0-alpha" :exclusions [cljsjs/react]]
+                 [reagent "0.6.0" :exclusions [cljsjs/react]]
                  [cljs-react-test "0.1.3-SNAPSHOT" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
                  [cljsjs/react-with-addons "0.14.3-0"]
