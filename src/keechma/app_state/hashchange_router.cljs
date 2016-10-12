@@ -1,4 +1,4 @@
-(ns keechma.app-state.hashchange
+(ns keechma.app-state.hashchange-router
   (:require [keechma.app-state.core :as core :refer [IRouter]]
             [router.core :as router]
             [goog.events :as events]
@@ -35,5 +35,5 @@
     (str "#!" (router/map->url (:routes this) params))))
 
 (defn constructor [routes routes-chan]
-  (let [listener (partial hashchange-listener routes routes-chan)] 
+  (let [listener (partial hashchange-listener routes routes-chan)]
     (core/start! (->HashchangeRouter (router/expand-routes routes) routes-chan listener))))

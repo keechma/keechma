@@ -6,7 +6,8 @@
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.app-state :as app-state]
             [keechma.controller :as controller]
-            [keechma.ui-component :as ui])
+            [keechma.ui-component :as ui]
+            [keechma.app-state.react-native-router :as rn-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -155,4 +156,65 @@
                  (sim/click (sel1 c [:button]) nil)
                  (<! (timeout 10))
                  (is (= (.-innerText h1-v3) "2"))
+                 (app-state/stop! app-v3)
                  (done)))))))
+
+(defrecord ReactNativeController [route-atom]
+  controller/IController
+  (params [this route]
+    (reset! (:route-atom this) route)
+    true)
+  (handler [this app-db-atom in-chan _]
+    (controller/dispatcher app-db-atom in-chan
+                           {:route-changed (fn [app-db-atom value]
+                                             (reset! (:route-atom this) value))})))
+
+(deftest react-native-router []
+  (let [route-atom (atom nil)
+        app-definition {:controllers {:main (->ReactNativeController route-atom)}
+                        :components {:main {:renderer (fn [ctx])}}
+                        :router :react-native}]
+    (async done
+           (go
+             (is (= nil @route-atom))
+             (app-state/start! app-definition false)
+             (<! (timeout 10))
+             (is (= {:index 0
+                     :key :init
+                     :routes [{:key :init}]}
+                    @route-atom))
+             (rn-router/navigate! :push {:key :foo})
+             (<! (timeout 10))
+             (is (= {:index 1
+                     :key :foo
+                     :routes [{:key :init}
+                              {:key :foo}]}
+                    @route-atom))
+             (rn-router/navigate! :push {:key :bar})
+             (<! (timeout 10))
+             (is (= {:index 2
+                     :key :bar
+                     :routes [{:key :init}
+                              {:key :foo}
+                              {:key :bar}]}
+                    @route-atom))
+             (rn-router/navigate! :pop)
+             (<! (timeout 10))
+             (is (= {:index 1
+                     :key :foo
+                     :routes [{:key :init}
+                              {:key :foo}]}
+                    @route-atom))
+             (rn-router/navigate! :home)
+             (<! (timeout 10))
+             (is (= {:index 0
+                     :key :init
+                     :routes [{:key :init}]}
+                    @route-atom))
+             (rn-router/navigate! :pop)
+             (<! (timeout 10))
+             (is (= {:index 0
+                     :key :init
+                     :routes [{:key :init}]}
+                    @route-atom))
+             (done)))))

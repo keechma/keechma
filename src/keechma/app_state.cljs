@@ -4,7 +4,8 @@
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager]
             [keechma.app-state.core :as app-state-core]
-            [keechma.app-state.hashchange :as hashchange-router])
+            [keechma.app-state.hashchange-router :as hashchange-router]
+            [keechma.app-state.react-native-router :as react-native-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -33,17 +34,21 @@
 (defn ^:private add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
 
+(defn start-selected-router! [state constructor]
+  (let [routes (:routes state) 
+        routes-chan (:routes-chan state)
+        router (constructor routes routes-chan)]
+    (-> state
+        (assoc :router router)
+        (add-stop-fn (fn [s]
+                       (app-state-core/stop! router)
+                       s)))))
+
 (defn start-router! [state]
   (let [router (:router state)]
     (case router
-      :hashchange (let [routes (:routes state)
-                        routes-chan (:routes-chan state)
-                        router (hashchange-router/constructor routes routes-chan)]
-                    (-> state
-                        (assoc :router router)
-                        (add-stop-fn (fn [s]
-                                       (app-state-core/stop! router)
-                                       s))))
+      :hashchange (start-selected-router! state hashchange-router/constructor)
+      :react-native (start-selected-router! state react-native-router/constructor)
       state)))
 
 (defn ^:private resolve-main-component [state]
