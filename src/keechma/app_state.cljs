@@ -1,12 +1,10 @@
 (ns keechma.app-state
   (:require [reagent.core :as reagent :refer [atom cursor]]
             [cljs.core.async :refer [put! close! chan timeout]]
-            [goog.events :as events]
-            [goog.history.EventType :as EventType]
-            [router.core :as router]
             [keechma.ui-component :as ui]
-            [keechma.controller-manager :as controller-manager])
-  (:import goog.History)
+            [keechma.controller-manager :as controller-manager]
+            [keechma.app-state.core :as app-state-core]
+            [keechma.app-state.hashchange :as hashchange-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -17,13 +15,9 @@
                 :internal {}}
                initial-data)))
 
-(defn ^:private history []
-  (History.))
-
 (defn ^:private default-config [initial-data]
-  {:routes []
-   :routes-chan (chan)
-   :route-prefix "#!"
+  {:router :hashchange
+   :routes-chan (chan) 
    :commands-chan (chan)
    :app-db (app-db initial-data)
    :components {}
@@ -31,52 +25,35 @@
    :html-element nil
    :stop-fns []})
 
-(defn ^:private redirect [routes params]
-  (set! (.-hash js/location) (str "#!" (router/map->url routes params))))
-
-(defn ^:private add-redirect-fn-to-controllers [controllers routes]
+(defn ^:private add-redirect-fn-to-controllers [controllers router]
   (reduce-kv (fn [m k v]
-            (assoc m k (assoc v :redirect-fn (partial redirect routes)))) {} controllers))
+            (assoc m k (assoc v :redirect-fn
+                              (partial app-state-core/redirect! router)))) {} controllers))
 
 (defn ^:private add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
 
-(defn ^:private expand-routes [state]
-  (assoc state :routes (router/expand-routes (:routes state))))
-
-(defn ^:private bind-history! [state]
-  (let [routes-chan (:routes-chan state)
-        route-prefix (:route-prefix state)
-        routes (:routes state)
-        ;; Always try to use existing elements for goog.History. That way 
-        ;; page won't be erased when refreshed in development
-        ;; https://groups.google.com/forum/#!topic/closure-library-discuss/0vKRKfJPK9c
-        h (History. false nil (.getElementById js/document "history_state0") (.getElementById js/document "history_iframe0")) 
-        ;; Clean this when HTML5 History API will be implemented
-        ;; (subs (.. js/window -location -hash) 2) removes #! from the start of the route
-        current-route-params (router/url->map routes (subs (.. js/window -location -hash) 2))
-        listener (fn [e]
-                   ;; Clean this when HTML5 History API will be implemented
-                   ;; (subs (.-token e) 1) Removes ! from the start of the route
-                   (let [clean-route (subs (.-token e) 1) 
-                       route-params (router/url->map routes clean-route)]
-                     (put! routes-chan route-params)))]
-    (events/listen h EventType/NAVIGATE listener)
-    (doto h (.setEnabled true))
-    (put! routes-chan current-route-params)
-    (add-stop-fn state (fn [_]
-                         (events/unlisten h EventType/NAVIGATE listener)))))
+(defn start-router! [state]
+  (let [router (:router state)]
+    (case router
+      :hashchange (let [routes (:routes state)
+                        routes-chan (:routes-chan state)
+                        router (hashchange-router/constructor routes routes-chan)]
+                    (-> state
+                        (assoc :router router)
+                        (add-stop-fn (fn [s]
+                                       (app-state-core/stop! router)
+                                       s))))
+      state)))
 
 (defn ^:private resolve-main-component [state]
-  (let [routes (:routes state)
+  (let [router (:router state)
         resolved
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
-                  :url-fn (fn [params]
-                            ;; Clean this when HTML5 History API will be implemented
-                            (str "#!" (router/map->url (:routes state) params)))
                   :app-db (:app-db state)
-                  :redirect-fn (partial redirect routes)
+                  :url-fn (partial app-state-core/url router) 
+                  :redirect-fn (partial app-state-core/redirect! router)
                   :current-route-fn (fn []
                                       (let [app-db (:app-db state)]
                                         (reaction
@@ -93,17 +70,15 @@
                          (reagent/unmount-component-at-node container)))))
 
 (defn ^:private start-controllers [state]
-  (let [routes (:routes state)
-        controllers (add-redirect-fn-to-controllers
-                     (:controllers state) routes)
+  (let [router (:router state)
+        controllers (add-redirect-fn-to-controllers (:controllers state) router)
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
         app-db (:app-db state)
         manager (controller-manager/start routes-chan commands-chan app-db controllers)]
     (add-stop-fn state (fn [s]
-                         (do
-                           ((:stop manager))
-                           s)))))
+                         ((:stop manager))
+                         s))))
 
 (defn ^:private log-state [state]
   (do
@@ -168,8 +143,7 @@
          config (merge (default-config initial-data) config)
          mount (if should-mount? mount-to-element! identity)]
      (-> config
-         (expand-routes)
-         (bind-history!)
+         (start-router!)
          (start-controllers)
          (resolve-main-component)
          (mount)))))

@@ -35,7 +35,8 @@
     (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
   ;; When the controller is stopped, stop the inner app
   (stop [this params app-db]
-    (app-state/stop! (:inner-app app-db))))
+    (app-state/stop! (:inner-app app-db))
+    app-db))
 
 (deftest multiple-apps []
   (let [[c unmount] (make-container)
@@ -66,7 +67,7 @@
     (async done
            (go
              (<! (timeout 100))
-             (is (= (.-innerText c) "INNER APP"))
+             (is (= (.-innerText c) "INNER APP")) 
              (app-state/stop! outer-app done)))))
 
 (defrecord RedirectController []
