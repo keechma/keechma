@@ -84,6 +84,7 @@
                    foo-controller
                    {:name :foo
                     :params {:foo :bar}
+                    :app-db (atom {})
                     :commands-chan (chan)})]
     (is (= (dissoc new-state :internal) {:what :that :params {:foo :bar} :runs 1 :state :started}))
     (is (instance? FooController (get-in new-state [:internal :running-controllers :foo])))
@@ -96,10 +97,12 @@
     (is (= new-state {:what :that :state :stopped :internal {:running-controllers {}}}))))
 
 (deftest restart-controller []
-  (let [started-state (controller-manager/start-controller 
+  (let [app-db (atom {})
+        started-state (controller-manager/start-controller 
                        {:what :that}
                        foo-controller
                        {:name :foo
+                        :app-db app-db
                         :params {:start 1}
                         :commands-chan (chan)})
         started-controller (get-in started-state [:internal :running-controllers :foo])
@@ -108,6 +111,7 @@
                          started-controller
                          foo-controller
                          {:name :foo
+                          :app-db app-db
                           :params {:start 2}
                           :commands-chan (chan)})]
     (is (= (dissoc restarted-state :internal) {:what :that :params {:start 2} :state :started :runs 2}))

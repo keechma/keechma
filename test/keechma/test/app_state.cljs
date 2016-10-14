@@ -218,3 +218,35 @@
                      :routes [{:key :init}]}
                     @route-atom))
              (done)))))
+
+
+(defrecord ControllerA [kv-state-atom]
+  controller/IController
+  (params [_ _] true)
+  (handler [_ app-db-atom _ _]
+    (swap! app-db-atom assoc-in [:kv :foo] :bar)
+    (reset! kv-state-atom (:kv @app-db-atom))))
+
+(defrecord ControllerB [kv-state-atom]
+  controller/IController
+  (params [_ _] true)
+  (start [_ _ app-db]
+    (assoc-in app-db [:kv :start] :value))
+  (handler [_ app-db-atom _ _]
+    (js/setTimeout (fn []
+                     (swap! app-db-atom assoc-in [:kv :baz] :qux)
+                     (reset! kv-state-atom (:kv @app-db-atom))) 10)))
+
+(deftest controller-kv-test []
+  (let [kv-state-atom (atom nil)
+        app-definition {:controllers {:a (->ControllerA kv-state-atom)
+                                      :b (->ControllerB kv-state-atom)}
+                        :components {:main {:renderer (fn [ctx])}}}] 
+    (async done
+           (go
+             (app-state/start! app-definition false)
+             (<! (timeout 1))
+             (is (= @kv-state-atom {:foo :bar}))
+             (<! (timeout 20))
+             (is (= @kv-state-atom {:foo :bar :baz :qux :start :value}))
+             (done)))))

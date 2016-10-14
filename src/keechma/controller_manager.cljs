@@ -43,8 +43,9 @@
                        (assoc :name name)
                        (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
         with-started (keechma.controller/start controller params app-db-snapshot)]
+    (reset! app-db with-started)
     (keechma.controller/handler controller app-db in-chan out-chan) 
-    (assoc-in with-started [:internal :running-controllers name] controller)))
+    (assoc-in @app-db [:internal :running-controllers name] controller)))
 
 (defn ^:private stop-controller [app-db-snapshot controller config] 
   (let [name (:name config)
