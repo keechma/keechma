@@ -8,7 +8,7 @@
 
 (defn hashchange-listener [routes routes-chan e]
   ;; (subs (.-token e) 1) Removes ! from the start of the route
-  (let [clean-route (subs (.-token e) 1) 
+  (let [clean-route (subs (.-token e) 1)
         route-params (router/url->map routes clean-route)]
     (put! routes-chan route-params)))
 
@@ -35,5 +35,5 @@
     (str "#!" (router/map->url (:routes this) params))))
 
 (defn constructor [routes routes-chan]
-  (let [listener (partial hashchange-listener routes routes-chan)]
+  (let [listener (partial hashchange-listener (router/expand-routes routes) routes-chan)]
     (core/start! (->HashchangeRouter (router/expand-routes routes) routes-chan listener))))
