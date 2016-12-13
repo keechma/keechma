@@ -3,23 +3,22 @@
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
 
-  :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/clojurescript "1.7.170"]
-                 [org.clojure/core.async "0.2.374"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
+                 [org.clojure/clojurescript "1.9.229"]
                  [reagent "0.6.0" :exclusions [cljsjs/react]]
                  [cljs-react-test "0.1.4-SNAPSHOT" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
                  [cljsjs/react-with-addons "15.4.0-0"]
-                 [funcool/cuerdas "0.7.0"]
+                 [funcool/cuerdas "2.0.1"]
                  [lein-doo "0.1.7"]
                  [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]
                  [keechma/router "0.1.0"]
                  [keechma/entitydb "0.1.0"]]
 
-  :plugins [[lein-cljsbuild "1.1.1"]
-            [lein-figwheel "0.5.0-1"]
-            [lein-doo "0.1.6"]
+  :plugins [[lein-cljsbuild "1.1.5"]
+            [lein-figwheel "0.5.8"]
+            [lein-doo "0.1.7"]
             [lein-codox "0.9.3"]]
 
   :source-paths ["src"]
