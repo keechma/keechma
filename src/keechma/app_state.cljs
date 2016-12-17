@@ -17,14 +17,27 @@
                initial-data)))
 
 (defn ^:private default-config [initial-data]
-  {:router :hashchange
-   :routes-chan (chan) 
+  {:name :application
+   :reporter (fn [app-name type direction topic name payload severity])
+   :router :hashchange
+   :routes-chan (chan)
    :commands-chan (chan)
    :app-db (app-db initial-data)
    :components {}
    :controllers {}
    :html-element nil
    :stop-fns []})
+
+(defn ^:private process-config [config]
+  (let [name (keyword (gensym (:name config)))
+        reporter (partial (:reporter config) name)]
+    (assoc config
+           :name name
+           :reporter reporter)))
+
+(defn ^:private add-reporter-to-controllers [controllers reporter]
+  (reduce-kv (fn [m k v]
+            (assoc m k (assoc v :reporter reporter))) {} controllers))
 
 (defn ^:private add-redirect-fn-to-controllers [controllers router]
   (reduce-kv (fn [m k v]
@@ -56,6 +69,7 @@
         resolved
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
+                  :reporter (partial (:reporter state) :component :out)
                   :app-db (:app-db state)
                   :url-fn (partial app-state-core/url router) 
                   :redirect-fn (partial app-state-core/redirect! router)
@@ -76,11 +90,14 @@
 
 (defn ^:private start-controllers [state]
   (let [router (:router state)
-        controllers (add-redirect-fn-to-controllers (:controllers state) router)
+        reporter (:reporter state)
+        controllers (-> (:controllers state)
+                        (add-reporter-to-controllers reporter)
+                        (add-redirect-fn-to-controllers router))
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
         app-db (:app-db state)
-        manager (controller-manager/start routes-chan commands-chan app-db controllers)]
+        manager (controller-manager/start routes-chan commands-chan app-db controllers reporter)]
     (add-stop-fn state (fn [s]
                          ((:stop manager))
                          s))))
@@ -145,7 +162,7 @@
   ([config] (start! config true))
   ([config should-mount?]
    (let [initial-data (or (:init-data config) {})
-         config (merge (default-config initial-data) config)
+         config (process-config (merge (default-config initial-data) config))
          mount (if should-mount? mount-to-element! identity)]
      (-> config
          (start-router!)

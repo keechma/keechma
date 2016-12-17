@@ -24,12 +24,12 @@
                    (assoc m k action)
                    m))) {} controller-params))
 
-(defn ^:private send-command-to [controller command-name args] 
-  (do
-    (put! (:in-chan controller) [command-name args])
-    controller))
+(defn ^:private send-command-to [reporter controller command-name args] 
+  (reporter :controller :in (:name controller) command-name args :info)
+  (put! (:in-chan controller) [command-name args])
+  controller)
 
-(defn ^:private start-controller [app-db-snapshot controller config]
+(defn ^:private start-controller [reporter app-db-snapshot controller config]
   (let [out-chan (:commands-chan config)
         in-chan (chan)
         name (:name config)
@@ -43,53 +43,61 @@
                        (assoc :name name)
                        (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
         with-started (keechma.controller/start controller params app-db-snapshot)]
+    (reporter :app :out :controller :start nil :info)
     (reset! app-db with-started)
     (keechma.controller/handler controller app-db in-chan out-chan) 
     (assoc-in @app-db [:internal :running-controllers name] controller)))
 
-(defn ^:private stop-controller [app-db-snapshot controller config] 
+(defn ^:private stop-controller [reporter app-db-snapshot controller config] 
   (let [name (:name config)
         with-stopped (keechma.controller/stop controller (:params controller) app-db-snapshot)]
+    (reporter :app :out :controller :stop nil :info)
     (close! (:in-chan controller))
     (assoc-in with-stopped [:internal :running-controllers]
               (dissoc (get-in with-stopped [:internal :running-controllers]) name))))
 
-(defn ^:private restart-controller [app-db-snapshot controller running-controller config]
-  (-> app-db-snapshot
-      (stop-controller running-controller config)
-      (start-controller controller config)))
+(defn ^:private restart-controller [reporter app-db-snapshot controller running-controller config]
+  (reporter :app :out :controller :restart nil :info)
+  (let [stop (partial stop-controller reporter)
+        start (partial start-controller reporter)]
+    (-> app-db-snapshot
+        (stop running-controller config)
+        (start controller config))))
 
-(defn ^:private dispatch-controller-change [app-db-snapshot controller action config]
+(defn ^:private dispatch-controller-change [reporter app-db-snapshot controller action config]
   (let [name (:name config)
         running (fn [name] (get-in app-db-snapshot [:internal :running-controllers name]))] 
     (case action
-      :start (start-controller app-db-snapshot controller config)
-      :restart (restart-controller app-db-snapshot controller (running name) config) 
-      :stop (stop-controller app-db-snapshot (running name) config)
+      :start (start-controller reporter app-db-snapshot controller config)
+      :restart (restart-controller reporter app-db-snapshot controller (running name) config) 
+      :stop (stop-controller reporter app-db-snapshot (running name) config)
       :route-changed (do
-                       (send-command-to (running name) :route-changed (:route-params config))
+                       (send-command-to reporter (running name) :route-changed (:route-params config))
                        app-db-snapshot))))
 
-(defn ^:private make-controller-change-applier [controllers controllers-params controllers-actions config]
+(defn ^:private make-controller-change-applier
+  [reporter controllers controllers-params controllers-actions config]
   (fn [app-db-snapshot name action]
     (let [controller (get controllers name)
           params (get controllers-params name)
           config (merge config {:name name :params params})]
-      (dispatch-controller-change app-db-snapshot controller action config))))
+      (dispatch-controller-change reporter app-db-snapshot controller action config))))
 
-(defn ^:private apply-controllers-change [app-db-snapshot controllers controllers-params controllers-actions config]
+(defn ^:private apply-controllers-change [reporter app-db-snapshot controllers controllers-params controllers-actions config]
   (reduce-kv
-   (make-controller-change-applier controllers controllers-params controllers-actions config)
+   (make-controller-change-applier reporter controllers controllers-params controllers-actions config)
    app-db-snapshot
    controllers-actions))
 
-(defn ^:private route-changed [route-params app-db commands-chan controllers]
+(defn ^:private route-changed [reporter route-params app-db commands-chan controllers]
   (let [app-db-snapshot @app-db
         running-controllers (get-in app-db-snapshot [:internal :running-controllers])
         controllers-params (reduce-kv (fn [m k controller]
                                         (assoc m k (controller-params route-params controller))){} controllers)
-        controllers-actions (controllers-actions running-controllers controllers-params)] 
-    (apply-controllers-change (assoc app-db-snapshot :route route-params)
+        controllers-actions (controllers-actions running-controllers controllers-params)]
+    (reporter :router :out nil nil route-params :info)
+    (apply-controllers-change reporter
+                              (assoc app-db-snapshot :route route-params)
                               controllers
                               controllers-params
                               controllers-actions
@@ -98,11 +106,11 @@
                                :route-params route-params})))
 
 
-(defn ^:private route-command-to-controller [controllers command-name command-args]
+(defn ^:private route-command-to-controller [reporter controllers command-name command-args]
   (let [[controller-name command-name] command-name
         controller (get controllers controller-name)]
     (if controller
-      (send-command-to controller command-name command-args)
+      (send-command-to reporter controller command-name command-args)
       (.log js/console (str "Trying to send command " command-name " to the " controller-name " controller which is not started.")))))
 
 (defn start
@@ -135,7 +143,8 @@
   "
 
   
-  [route-chan commands-chan app-db controllers]
+  [route-chan commands-chan app-db controllers reporter]
+  (reporter :app :in nil :start nil :info)
   (let [stop-route-block (chan)
         stop-command-block (chan)
         scheduled-updates (atom []) 
@@ -150,7 +159,7 @@
              (let [[val channel] (alts! [stop-route-block route-chan])]
                (when (and (not= channel stop-route-block) val)
                  (let [route-params val]
-                   (reset! app-db (route-changed route-params app-db commands-chan controllers))
+                   (reset! app-db (route-changed reporter route-params app-db commands-chan controllers))
                    (recur))))))
          (go
            (loop []
@@ -159,14 +168,15 @@
                  (let [[command-name command-args] val 
                        running-controllers (get-in @app-db [:internal :running-controllers])]
                    (when (not (nil? command-name))
-                     (route-command-to-controller running-controllers command-name command-args))
+                     (route-command-to-controller reporter running-controllers command-name command-args))
                    (recur))))))]]
     {:running-chans running-chans
      :stop (fn []
+             (reporter :app :in nil :stop nil :info)
              (let [controllers (get-in @app-db [:internal :running-controllers])]
                (close! stop-route-block)
                (close! stop-command-block)
                (doseq [running running-chans] (close! running))
                (doseq [[k controller] controllers]
-                 (stop-controller @app-db controller {:name (:name controller)}))))}))
+                 (stop-controller reporter @app-db controller {:name (:name controller)}))))}))
 

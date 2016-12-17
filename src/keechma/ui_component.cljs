@@ -13,6 +13,7 @@
   (url [this params]
     "Returns a URL based on the params. It will use the `:url-fn` that is injected
     from the outside to generate the URL based on the current app routes.")
+  (report [this name payload] [this name payload severity])
   (redirect [this params]
     "Redirects page to the URL generated from params")
   (subscription [this key] [this key args]
@@ -33,6 +34,11 @@
   (url [this params]
     (let [url-fn (:url-fn this)]
       (url-fn params)))
+  (report
+    ([this name payload] (report this name payload :info))
+    ([this name payload severity]
+     (let [reporter (or (:reporter this) (fn [_ _ _ _ _ _ _]))]
+       (reporter (:name this) [(:topic this) name] payload severity))))
   (redirect [this params]
     ((:redirect-fn this) params))
   (current-route [this]
@@ -51,6 +57,7 @@
     ([this command]
      (send-command this command nil))
     ([this command args]
+     (report this command args)
      (put! (:commands-chan this) [[(:topic this) command] args])
      nil))
   (renderer [this]
@@ -91,9 +98,9 @@
             missing-deps (missing-component-deps components)]  
         (if-not (empty? missing-deps)
           (throw (js/Error (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
-          (-> component
-              (assoc :components components)
-              (assoc :component-deps []))))
+          (assoc component
+                 :components components
+                 :component-deps [])))
       component)))
 
 (defn resolve-dep
@@ -149,13 +156,18 @@
                (assoc components k (resolve-component-subscriptions c subscriptions)))
              {} components))
 
+(defn ^:private assoc-name [components]
+  (reduce-kv (fn [components k c]
+               (assoc components k (assoc c :name k))) {} components))
+
 (defn ^:private component->renderer [parent component]
   (renderer (assoc component
-              :redirect-fn (:redirect-fn parent)
-              :commands-chan (:commands-chan parent)
-              :url-fn (:url-fn parent)
-              :current-route-fn (:current-route-fn parent)
-              :app-db (:app-db parent))))
+                   :reporter (:reporter parent)
+                   :redirect-fn (:redirect-fn parent)
+                   :commands-chan (:commands-chan parent)
+                   :url-fn (:url-fn parent)
+                   :current-route-fn (:current-route-fn parent)
+                   :app-db (:app-db parent))))
 
 (defn system
   "Creates a component system.
@@ -225,7 +237,7 @@
      (throw (js/Error "System must have a :main component!"))
      (let [graph (component-dep-graph components)
            sorted-keys (dep/topo-sort graph)
-           components-with-resolved-deps (resolve-subscriptions components subscriptions)]
+           components-with-resolved-deps (resolve-subscriptions (assoc-name components) subscriptions)]
        (:main (resolved-system components-with-resolved-deps sorted-keys))))))
 
 (defn constructor

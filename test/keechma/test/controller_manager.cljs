@@ -80,6 +80,7 @@
 
 (deftest start-controller []
   (let [new-state (controller-manager/start-controller
+                   (fn [_ _ _ _ _ _ _])
                    {:what :that}
                    foo-controller
                    {:name :foo
@@ -92,6 +93,7 @@
 
 (deftest stop-controller [] 
   (let [new-state (controller-manager/stop-controller
+                   (fn [_ _ _ _ _ _ _])
                    {:what :that :internal {:running-controllers {:foo foo-controller}}} foo-controller
                    {:name :foo})]
     (is (= new-state {:what :that :state :stopped :internal {:running-controllers {}}}))))
@@ -99,6 +101,7 @@
 (deftest restart-controller []
   (let [app-db (atom {})
         started-state (controller-manager/start-controller 
+                       (fn [_ _ _ _ _ _ _])
                        {:what :that}
                        foo-controller
                        {:name :foo
@@ -107,6 +110,7 @@
                         :commands-chan (chan)})
         started-controller (get-in started-state [:internal :running-controllers :foo])
         restarted-state (controller-manager/restart-controller
+                         (fn [_ _ _ _ _ _ _])
                          started-state
                          started-controller
                          foo-controller
@@ -153,7 +157,7 @@
                                        (get log i)) indices)))]
     (async done
            (go
-             (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers))
+             (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers (fn [_ _ _ _ _ _ _])))
              (>! route-chan {:page "users"})
              ;; (<! (animation-frame 2))
              ;; (is (= (get-log [0]) (:log @app-db)))

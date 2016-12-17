@@ -60,6 +60,7 @@
   "
   (params [this route-params]
     "Receives the `route-params` and returns either the `params` for the controller or `nil`")
+  (report [this direction name payload] [this direction name payload severity])
   (start [this params app-db]
     "Called when the controller is started. Receives the controller `params` (returned by the
     `params` function) and the application state. It must return the application state.")
@@ -88,16 +89,24 @@
   (start [_ params app-db] app-db)
   (stop [_ params app-db] app-db)
   (handler [_ _ _ _])
+  (report
+    ([this direction name payload] (report this direction name payload :info))
+    ([this direction name payload severity]
+     (let [reporter (or (:reporter this) (fn [_ _ _ _ _ _ _]))
+           topic (:name this)]
+       (reporter :controller direction topic name payload severity))))
   (execute
     ([this command-name]
      (execute this command-name nil))
     ([this command-name args]
+     (report this :in command-name args)
      (put! (:in-chan this) [command-name args])))
   (send-command
     ([this command-name]
      (send-command this command-name nil))
     ([this command-name args]
      (let [out-chan (:out-chan this)]
+       (report this :out command-name args)
        (put! out-chan [command-name args])
        this)))
   (is-running? [this]

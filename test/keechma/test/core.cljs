@@ -6,6 +6,8 @@
             [keechma.test.controller-manager]
             [keechma.test.ui-component]))
 
+(enable-console-print!)
+
 (doo-tests 'keechma.test.app-state
            'keechma.test.controller
            'keechma.test.controller-manager

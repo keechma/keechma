@@ -21,11 +21,14 @@
                       :current-user {}
                       :user-profile {}}
           system (ui/system components)]
-      (is (= system {:component-deps []
-                     :components {:sidebar {:component-deps []
-                                            :components {:current-user {}}}
-                                  :users {:component-deps []
-                                          :components {:user-profile {}}}}}))))
+      (is (= system {:name :main
+                     :component-deps []
+                     :components {:sidebar {:name :sidebar
+                                            :component-deps []
+                                            :components {:current-user {:name :current-user}}}
+                                  :users {:name :users
+                                          :component-deps []
+                                          :components {:user-profile {:name :user-profile}}}}}))))
   (testing "System throws when missing dependencies"
     (let [incomplete-system {:main {:component-deps [:sidebar]}}]
       (is (thrown? js/Error (ui/system incomplete-system)))))
@@ -58,13 +61,15 @@
                   :footer {}}]
     (= (ui/system system-b)
        {:component-deps []
-        :components {:layout {:component-deps []
+        :components {:layout {:name :layout
+                              :component-deps []
                               :components {:main-panel {:is-main-panel? true}
                                            :filter-bar {:is-filter-bar? true}}}
-                     :sidebar {:component-deps []
+                     :sidebar {:name :sidebar
+                               :component-deps []
                                :components {:menu {:is-menu? true}
                                             :logout-button {:is-logout-button? true}}} 
-                     :footer {}}})))
+                     :footer {:name :footer}}})))
 
 (deftest system-rendering-test []
   (let [commands-chan (chan)
