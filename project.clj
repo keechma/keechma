@@ -6,9 +6,9 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.229"]
                  [reagent "0.6.0" :exclusions [cljsjs/react]]
+                 [cljsjs/react-with-addons "15.2.1-0"]
                  [cljs-react-test "0.1.4-SNAPSHOT" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
-                 [cljsjs/react-with-addons "15.4.0-0"]
                  [funcool/cuerdas "2.0.1"]
                  [lein-doo "0.1.7"]
                  [com.stuartsierra/dependency "0.2.0"]
@@ -49,8 +49,7 @@
                            :pretty-print false}}
                {:id "test"
                 :source-paths ["src" "test"]
-                :compiler {:output-to 
-                           "resources/public/js/compiled/test.js"
+                :compiler {:output-to "resources/public/js/compiled/test.js"
                            :optimizations :none
                            :main keechma.test.core}}]}
 
