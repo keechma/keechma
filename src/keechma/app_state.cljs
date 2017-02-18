@@ -1,6 +1,6 @@
 (ns keechma.app-state
   (:require [reagent.core :as reagent :refer [cursor]]
-            [cljs.core.async :refer [put! close! chan timeout]]
+            [cljs.core.async :refer [put! close! chan timeout <!]]
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager]
             [keechma.app-state.core :as app-state-core]
@@ -10,7 +10,7 @@
                    [reagent.ratom :refer [reaction]]))
 
 (defn ^:private app-db [initial-data]
-  (reagent/atom (merge {:route {}
+  (reagent/atom (merge {:route {:data {}}
                         :entity-db {}
                         :kv {}
                         :internal {}}
@@ -67,6 +67,7 @@
 
 (defn ^:private resolve-main-component [state]
   (let [router (:router state)
+        current-route-reaction (reaction (:route @(:app-db state)))
         resolved
         (partial ui/component->renderer
                  {:commands-chan (:commands-chan state)
@@ -74,18 +75,15 @@
                   :app-db (:app-db state)
                   :url-fn (partial app-state-core/url router) 
                   :redirect-fn (partial app-state-core/redirect! router)
-                  :current-route-fn (fn []
-                                      (let [app-db (:app-db state)]
-                                        (reaction
-                                         (:route @app-db))))})]
+                  :current-route-fn (fn [] current-route-reaction)})]
     (assoc state :main-component
            (-> (ui/system (:components state) (or (:subscriptions state) {}))
                (resolved)))))
 
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 
-        container (:html-element state)] 
-    (reagent/render-component [main-component] container) 
+        container (:html-element state)]
+    (reagent/render-component [main-component] container)
     (add-stop-fn state (fn [s] 
                          (reagent/unmount-component-at-node container)))))
 

@@ -350,6 +350,7 @@
              (swap! (:app-db app) assoc-in [:kv :number] 43)
              (<! (timeout 16))
              (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (<! (timeout 16))
              (is (= 1 @reaction-call-count))
              (app-state/stop! app)
              (unmount)
@@ -386,4 +387,59 @@
              (is (= 2 @reaction-call-count))
              (app-state/stop! app)
              (unmount)
+             (done)))))
+
+(deftest cached-route-subscription
+  (let [[c unmount] (make-container)
+        renderer-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              (fn []
+                                                (let [current-route (:data @(ui/current-route ctx))
+                                                      _ (swap! renderer-call-count inc)]
+                                                  [:div.main-route "FOO = " (:foo current-route)])))}}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "FOO =" (.-innerText (sel1 c [:.main-route]))))
+             (set! (.-hash js/location) "#!?foo=foo")
+             (<! (timeout 16))
+             (is (= "FOO = foo" (.-innerText (sel1 c [:.main-route]))))
+             (swap! (:app-db app) assoc-in [:kv :foo] "bar")
+             (<! (timeout 16))
+             (is (= 2 @renderer-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (set! (.-hash js/location) "")
+             (<! (timeout 16))
+             (done)))))
+
+(deftest cached-route-subscription-form-1
+  (let [[c unmount] (make-container)
+        renderer-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              (let [current-route (:data @(ui/current-route ctx))
+                                                    _ (swap! renderer-call-count inc)]
+                                                [:div "FOO = " (:foo current-route)]))}}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "FOO =" (.-innerText c)))
+             (set! (.-hash js/location) "#!?foo=foo")
+             (<! (timeout 16))
+             (is (= "FOO = foo" (.-innerText c)))
+             (swap! (:app-db app) assoc-in [:kv :foo] "bar")
+             (<! (timeout 16))
+             (is (= 2 @renderer-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (set! (.-hash js/location) "")
+             (<! (timeout 16))
              (done)))))
