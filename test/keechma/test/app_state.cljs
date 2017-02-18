@@ -98,16 +98,16 @@
                                   (fn [ctx]
                                     [:button
                                      {:on-click #(ui/redirect ctx {:baz "qux"})}
-                                     "click"])}}})
-        button-node (sel1 c [:button])]
+                                     "click"])}}})]
     (async done
            (go
              (<! (timeout 100))
-             (sim/click button-node nil)
-             (<! (timeout 100))
-             (is (= (.. js/window -location -hash) "#!?baz=qux"))
-             (set! (.-hash js/location) "")
-             (app-state/stop! app done)))))
+             (let [button-node (sel1 c [:button])]
+               (sim/click button-node nil)
+               (<! (timeout 100))
+               (is (= (.. js/window -location -hash) "#!?baz=qux"))
+               (set! (.-hash js/location) "")
+               (app-state/stop! app done))))))
 
 
 (defrecord ClickController []
@@ -133,31 +133,34 @@
                         :subscriptions {:counter (fn [app-state-atom]
                                                    (reaction
                                                     (get-in @app-state-atom [:kv :counter])))}}
-        app-v1 (app-state/start! app-definition)
-        h1-v1 (sel1 c [:h1])]
+        app-v1 (app-state/start! app-definition)]
     (async done
            (go
-             (is (= (.-innerText h1-v1) "0"))
-             (sim/click (sel1 c [:button]) nil)
-             (<! (timeout 10))
-             (is (= (.-innerText h1-v1) "1"))
-             (app-state/stop! app-v1)
-             (<! (timeout 10))
-             (let [app-v2 (app-state/start! app-definition)
-                   h1-v2 (sel1 c [:h1])]
-               (is (= (.-innerText h1-v2) "0"))
-               (app-state/stop! app-v2)
+             (<! (timeout 100))
+             (let [h1-v1 (sel1 c [:h1])]
+               (is (= (.-innerText h1-v1) "0"))
+               (sim/click (sel1 c [:button]) nil)
                (<! (timeout 10))
-               (let [app-v3 (app-state/start! app-definition)
-                     h1-v3 (sel1 c [:h1])]
-                 (app-state/restore-app-db app-v1 app-v3)
-                 (<! (timeout 50))
-                 (is (= (.-innerText h1-v3) "1"))
-                 (sim/click (sel1 c [:button]) nil)
-                 (<! (timeout 10))
-                 (is (= (.-innerText h1-v3) "2"))
-                 (app-state/stop! app-v3)
-                 (done)))))))
+               (is (= (.-innerText h1-v1) "1"))
+               (app-state/stop! app-v1)
+               (<! (timeout 10))
+               (let [app-v2 (app-state/start! app-definition)]
+                 (<! (timeout 100))
+                 (let [h1-v2 (sel1 c [:h1])]
+                   (is (= (.-innerText h1-v2) "0"))
+                   (app-state/stop! app-v2)
+                   (<! (timeout 10))
+                   (let [app-v3 (app-state/start! app-definition)]
+                     (<! (timeout 100))
+                     (let [h1-v3 (sel1 c [:h1])]
+                       (app-state/restore-app-db app-v1 app-v3)
+                       (<! (timeout 50))
+                       (is (= (.-innerText h1-v3) "1"))
+                       (sim/click (sel1 c [:button]) nil)
+                       (<! (timeout 10))
+                       (is (= (.-innerText h1-v3) "2"))
+                       (app-state/stop! app-v3)
+                       (done))))))))))
 
 (defrecord ReactNativeController [route-atom]
   controller/IController

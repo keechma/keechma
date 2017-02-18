@@ -10,7 +10,7 @@
                    [reagent.ratom :refer [reaction]]))
 
 (defn ^:private app-db [initial-data]
-  (reagent/atom (merge {:route {:data {}}
+  (reagent/atom (merge {:route {}
                         :entity-db {}
                         :kv {}
                         :internal {}}
@@ -80,10 +80,17 @@
            (-> (ui/system (:components state) (or (:subscriptions state) {}))
                (resolved)))))
 
+(defn app-renderer [state]
+  [(fn []
+      (let [route-data (get-in @(:app-db state) [:route :data])
+            main-component (:main-component state)]
+        (when route-data
+          [main-component])))])
+
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 
         container (:html-element state)]
-    (reagent/render-component [main-component] container)
+    (reagent/render-component (app-renderer state) container)
     (add-stop-fn state (fn [s] 
                          (reagent/unmount-component-at-node container)))))
 
