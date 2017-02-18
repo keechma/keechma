@@ -1,5 +1,5 @@
 (ns keechma.app-state
-  (:require [reagent.core :as reagent :refer [atom cursor]]
+  (:require [reagent.core :as reagent :refer [cursor]]
             [cljs.core.async :refer [put! close! chan timeout]]
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager]
@@ -10,11 +10,11 @@
                    [reagent.ratom :refer [reaction]]))
 
 (defn ^:private app-db [initial-data]
-  (atom (merge {:route {}
-                :entity-db {}
-                :kv {}
-                :internal {}}
-               initial-data)))
+  (reagent/atom (merge {:route {}
+                        :entity-db {}
+                        :kv {}
+                        :internal {}}
+                       initial-data)))
 
 (defn ^:private default-config [initial-data]
   {:name :application
@@ -23,6 +23,7 @@
    :routes-chan (chan)
    :commands-chan (chan)
    :app-db (app-db initial-data)
+   :subscriptions-cache (atom {})
    :components {}
    :controllers {}
    :html-element nil
@@ -102,6 +103,22 @@
                          ((:stop manager))
                          s))))
 
+(defn add-sub-cache [cache [key sub]]
+  [key
+   (fn [app-db-atom & args]
+     (let [cached (get @cache [key args])]
+       (if cached
+         cached
+         (let [sub-reaction (apply sub (into [app-db-atom] (vec args)))]
+           (swap! cache assoc [key args] sub-reaction)
+           sub-reaction))))])
+
+(defn ^:private start-subs-cache [state]
+  (let [subscriptions (:subscriptions state)
+        subs-cache (:subscriptions-cache state)
+        cached-subscriptions (into {} (map #(add-sub-cache subs-cache %) subscriptions))]
+    (assoc state :subscriptions cached-subscriptions)))
+
 (defn ^:private log-state [state]
   (do
     (.log js/console (clj->js state))
@@ -165,6 +182,7 @@
          config (process-config (merge (default-config initial-data) config))
          mount (if should-mount? mount-to-element! identity)]
      (-> config
+         (start-subs-cache)
          (start-router!)
          (start-controllers)
          (resolve-main-component)

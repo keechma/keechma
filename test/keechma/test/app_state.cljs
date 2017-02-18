@@ -250,3 +250,140 @@
              (<! (timeout 20))
              (is (= @kv-state-atom {:foo :bar :baz :qux :start :value}))
              (done)))))
+
+(defrecord ControllerChangeNumber []
+  controller/IController
+  (params [_ _] true)
+  (start [_ _ app-db]
+    (assoc-in app-db [:kv :number] 42)))
+
+(deftest subscriptions-test []
+  (let [[c unmount] (make-container)
+        reaction-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {:change-number (->ControllerChangeNumber)}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div.main-subscriptions
+                                               [(ui/component ctx :sub-component)]
+                                               [(ui/component ctx :sub-component)]])
+                                            :component-deps [:sub-component]}
+                                     :sub-component {:renderer
+                                                     (fn [ctx]
+                                                       (fn []
+                                                         [:div @(ui/subscription ctx :number)]))
+                                                     :subscription-deps [:number]}}
+                        :subscriptions {:number (fn [app-db-atom]
+                                                  (swap! reaction-call-count inc)
+                                                  (reaction
+                                                   (get-in @app-db-atom [:kv :number])))}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (swap! (:app-db app) assoc-in [:kv :number] 43)
+             (<! (timeout 16))
+             (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (is (= 1 @reaction-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(deftest subscriptions-with-args-test []
+  (let [[c unmount] (make-container)
+        reaction-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {:change-number (->ControllerChangeNumber)}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div.main-subscriptions
+                                               [(ui/component ctx :sub-component) 1]
+                                               [(ui/component ctx :sub-component) 2]])
+                                            :component-deps [:sub-component]}
+                                     :sub-component {:renderer
+                                                     (fn [ctx add]
+                                                       (fn [add]
+                                                         [:div @(ui/subscription ctx :number [add])]))
+                                                     :subscription-deps [:number]}}
+                        :subscriptions {:number (fn [app-db-atom add]
+                                                  (swap! reaction-call-count inc)
+                                                  (reaction
+                                                   (+ add (get-in @app-db-atom [:kv :number]))))}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (swap! (:app-db app) assoc-in [:kv :number] 43)
+             (<! (timeout 16))
+             (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (is (= 2 @reaction-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(deftest subscriptions-form-1-test []
+  (let [[c unmount] (make-container)
+        reaction-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {:change-number (->ControllerChangeNumber)}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div.main-subscriptions
+                                               [(ui/component ctx :sub-component)]
+                                               [(ui/component ctx :sub-component)]])
+                                            :component-deps [:sub-component]}
+                                     :sub-component {:renderer
+                                                     (fn [ctx]
+                                                       [:div @(ui/subscription ctx :number)])
+                                                     :subscription-deps [:number]}}
+                        :subscriptions {:number (fn [app-db-atom]
+                                                  (swap! reaction-call-count inc)
+                                                  (reaction
+                                                   (get-in @app-db-atom [:kv :number])))}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (swap! (:app-db app) assoc-in [:kv :number] 43)
+             (<! (timeout 16))
+             (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (is (= 1 @reaction-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+
+(deftest subscriptions-with-args-form-1-test []
+  (let [[c unmount] (make-container)
+        reaction-call-count (atom 0)
+        app-definition {:html-element c
+                        :controllers {:change-number (->ControllerChangeNumber)}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div.main-subscriptions
+                                               [(ui/component ctx :sub-component) 1]
+                                               [(ui/component ctx :sub-component) 2]])
+                                            :component-deps [:sub-component]}
+                                     :sub-component {:renderer
+                                                     (fn [ctx add]
+                                                       [:div @(ui/subscription ctx :number [add])])
+                                                     :subscription-deps [:number]}}
+                        :subscriptions {:number (fn [app-db-atom add]
+                                                  (swap! reaction-call-count inc)
+                                                  (reaction
+                                                   (+ add (get-in @app-db-atom [:kv :number]))))}}
+         app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 16))
+             (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (swap! (:app-db app) assoc-in [:kv :number] 43)
+             (<! (timeout 16))
+             (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
+             (is (= 2 @reaction-call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
