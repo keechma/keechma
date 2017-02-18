@@ -43,7 +43,7 @@
                        (assoc :name name)
                        (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
         with-started (keechma.controller/start controller params app-db-snapshot)]
-    (reporter :app :out :controller :start nil :info)
+    (reporter :app :out :controller [(:name controller) :start] params :info)
     (reset! app-db with-started)
     (keechma.controller/handler controller app-db in-chan out-chan) 
     (assoc-in @app-db [:internal :running-controllers name] controller)))
@@ -51,13 +51,13 @@
 (defn ^:private stop-controller [reporter app-db-snapshot controller config] 
   (let [name (:name config)
         with-stopped (keechma.controller/stop controller (:params controller) app-db-snapshot)]
-    (reporter :app :out :controller :stop nil :info)
+    (reporter :app :out :controller [(:name controller) :stop] nil :info)
     (close! (:in-chan controller))
     (assoc-in with-stopped [:internal :running-controllers]
               (dissoc (get-in with-stopped [:internal :running-controllers]) name))))
 
 (defn ^:private restart-controller [reporter app-db-snapshot controller running-controller config]
-  (reporter :app :out :controller :restart nil :info)
+  (reporter :app :out :controller [(:name running-controller) :restart] nil :info)
   (let [stop (partial stop-controller reporter)
         start (partial start-controller reporter)]
     (-> app-db-snapshot
