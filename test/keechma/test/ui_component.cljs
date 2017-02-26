@@ -129,4 +129,5 @@
         system (ui/system {:main component})
         renderer (ui/renderer (assoc system :commands-chan commands-chan))
         [c unmount] (make-container)]
-    (reagent/render-component [renderer] c)))
+    (reagent/render-component [renderer] c)
+    (unmount)))

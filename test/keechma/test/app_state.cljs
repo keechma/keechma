@@ -7,7 +7,8 @@
             [keechma.app-state :as app-state]
             [keechma.controller :as controller]
             [keechma.ui-component :as ui]
-            [keechma.app-state.react-native-router :as rn-router])
+            [keechma.app-state.react-native-router :as rn-router]
+            [keechma.app-state.history-router :as history-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -280,13 +281,13 @@
                                                   (swap! reaction-call-count inc)
                                                   (reaction
                                                    (get-in @app-db-atom [:kv :number])))}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 1 @reaction-call-count))
              (app-state/stop! app)
@@ -313,13 +314,13 @@
                                                   (swap! reaction-call-count inc)
                                                   (reaction
                                                    (+ add (get-in @app-db-atom [:kv :number]))))}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 2 @reaction-call-count))
              (app-state/stop! app)
@@ -345,15 +346,15 @@
                                                   (swap! reaction-call-count inc)
                                                   (reaction
                                                    (get-in @app-db-atom [:kv :number])))}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= 1 @reaction-call-count))
              (app-state/stop! app)
              (unmount)
@@ -379,13 +380,13 @@
                                                   (swap! reaction-call-count inc)
                                                   (reaction
                                                    (+ add (get-in @app-db-atom [:kv :number]))))}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 2 @reaction-call-count))
              (app-state/stop! app)
@@ -403,21 +404,21 @@
                                                 (let [current-route (:data @(ui/current-route ctx))
                                                       _ (swap! renderer-call-count inc)]
                                                   [:div.main-route "FOO = " (:foo current-route)])))}}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "FOO =" (.-innerText (sel1 c [:.main-route]))))
              (set! (.-hash js/location) "#!?foo=foo")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "FOO = foo" (.-innerText (sel1 c [:.main-route]))))
              (swap! (:app-db app) assoc-in [:kv :foo] "bar")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= 2 @renderer-call-count))
              (app-state/stop! app)
              (unmount)
              (set! (.-hash js/location) "")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (done)))))
 
 (deftest cached-route-subscription-form-1
@@ -430,19 +431,369 @@
                                               (let [current-route (:data @(ui/current-route ctx))
                                                     _ (swap! renderer-call-count inc)]
                                                 [:div "FOO = " (:foo current-route)]))}}}
-         app (app-state/start! app-definition)]
+        app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "FOO =" (.-innerText c)))
              (set! (.-hash js/location) "#!?foo=foo")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= "FOO = foo" (.-innerText c)))
              (swap! (:app-db app) assoc-in [:kv :foo] "bar")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (is (= 2 @renderer-call-count))
              (app-state/stop! app)
              (unmount)
              (set! (.-hash js/location) "")
-             (<! (timeout 16))
+             (<! (timeout 20))
              (done)))))
+
+(deftest history-base-href
+  (is (= "/app/" (history-router/process-base-href "app")))
+  (is (= "/app/" (history-router/process-base-href "/app")))
+  (is (= "/app/" (history-router/process-base-href "app/"))))
+
+(deftest history-router
+  (let [[c unmount] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "page-name?baz=qux")
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :history
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:a {:href (ui/url ctx {:page "page-name2" :foo "Bar"})}
+                                               [:span.link-el "Link"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (sim/click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:foo "Bar"
+                     :page "page-name2"}))
+             (app-state/stop! app)
+             (unmount)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+             (done)))))
+
+(deftest history-router-base-href
+  (let [[c unmount] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "/app/page-name?baz=qux")
+        app-definition {:html-element c
+                        :controllers {}
+                        :base-href "app"
+                        :router :history
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:a {:href (ui/url ctx {:page "page-name2" :foo "Bar"})}
+                                               [:span.link-el "Link"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (sim/click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (.-pathname js/location) "/app/page-name2"))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:foo "Bar"
+                     :page "page-name2"}))
+             (app-state/stop! app)
+             (unmount)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+             (done)))))
+
+(deftest history-router-redirect
+  (let [[c unmount] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "page-name?baz=qux")
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :history
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:span.link-el
+                                               {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"})}
+                                               "Link"])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (sim/click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:foo "Bar"
+                     :page "page-name2"}))
+             (app-state/stop! app)
+             (unmount)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+             (done)))))
+
+(deftest history-router-2-apps
+  (let [[c1 unmount1] (make-container)
+        [c2 unmount2] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "test")
+        app-definition1 {:html-element c1
+                         :controllers {}
+                         :router :history
+                         :routes [":page"]
+                         :components {:main {:renderer
+                                             (fn [ctx]
+                                               [:a {:href (ui/url ctx {:page "app1" :foo "Bar"})}
+                                                [:span.link-el "Link"]])}}}
+        app-definition2 {:html-element c2
+                         :controllers {}
+                         :router :history
+                         :routes [":page"]
+                         :components {:main {:renderer
+                                             (fn [ctx]
+                                               [:a {:href (ui/url ctx {:page "app2" :baz "Qux"})}
+                                                [:span.link-el "Link"]])}}}
+        app1 (app-state/start! app-definition1)
+        app2 (app-state/start! app-definition2)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 2 ((:handlers-count history-router/urlchange-dispatcher))))
+
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    (get-in @(:app-db app2) [:route :data])
+                    {:page "test"}))
+
+             (sim/click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    (get-in @(:app-db app2) [:route :data])
+                    {:page "app1"
+                     :foo "Bar"}))
+             
+             (sim/click (sel1 c2 [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    (get-in @(:app-db app2) [:route :data])
+                    {:page "app2"
+                     :baz "Qux"}))
+             (app-state/stop! app1)
+             (app-state/stop! app2)
+             (unmount1)
+             (unmount2)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+
+             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+             (done)))))
+
+(deftest history-and-hashchange-router
+  (let [[c1 unmount1] (make-container)
+        [c2 unmount2] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "test1#!test2")
+        app-definition1 {:html-element c1
+                         :controllers {}
+                         :router :history
+                         :routes [":page"]
+                         :components {:main {:renderer
+                                             (fn [ctx]
+                                               [:a {:href (ui/url ctx {:page "app1" :foo "Bar"})}
+                                                [:span.link-el "Link"]])}}}
+        app-definition2 {:html-element c2
+                         :controllers {}
+                         :router :hashchange
+                         :routes [":page"]
+                         :components {:main {:renderer
+                                             (fn [ctx]
+                                               [:a#hashtag-link {:href (ui/url ctx {:page "app2" :baz "Qux"})} "Link"])}}}
+        app1 (app-state/start! app-definition1)
+        app2 (app-state/start! app-definition2)]
+    (async done
+           (go
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    {:page "test1"}))
+
+             (is (= (get-in @(:app-db app2) [:route :data])
+                    {:page "test2"}))
+
+             (is (= "/test1" (.-pathname js/location)))
+             (is (= "#!test2" (.-hash js/location)))
+
+
+             (sim/click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    {:page "app1" :foo "Bar"}))
+
+             (is (= (get-in @(:app-db app2) [:route :data])
+                    {:page "test2"}))
+
+             (is (= "/app1" (.-pathname js/location)))
+             (is (= "?foo=Bar" (.-search js/location)))
+             (is (= "#!test2" (.-hash js/location)))
+             
+             (.click (.getElementById js/document "hashtag-link"))
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db app1) [:route :data])
+                    {:page "app1" :foo "Bar"}))
+
+             (is (= (get-in @(:app-db app2) [:route :data])
+                    {:page "app2" :baz "Qux"}))
+
+             (is (= "/app1" (.-pathname js/location)))
+             (is (= "?foo=Bar" (.-search js/location)))
+             (is (= "#!app2?baz=Qux" (.-hash js/location)))
+             
+             
+             (app-state/stop! app1)
+             (app-state/stop! app2)
+             (unmount1)
+             (unmount2)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+
+             (done)))))
+
+(deftest hashchange-router-inside-history-router
+  (let [[c1 unmount1] (make-container)
+        [c2 unmount2] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "test1#!test2")
+
+        inner-app-definition {:controllers {}
+                              :router :hashchange
+                              :routes [":page"]
+                              :components {:main {:renderer
+                                                  (fn [ctx]
+                                                    [:a#hashtag-link {:href (ui/url ctx {:page "inner-app" :baz "Qux"})} "Inner Link"])}}}
+
+        inner-app (app-state/start! inner-app-definition false)
+
+        outer-app-definition {:html-element c1
+                              :controllers {}
+                              :router :history
+                              :routes [":page"]
+                              :components {:main {:renderer
+                                                  (fn [ctx]
+                                                    [:div
+                                                     [:a {:href (ui/url ctx {:page "outer-app" :foo "Bar"})}
+                                                      [:span.link-el "Outer Link"]]
+                                                     [:div
+                                                      [(:main-component inner-app)]]])}}}
+        
+        outer-app (app-state/start! outer-app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db outer-app) [:route :data])
+                    {:page "test1"}))
+
+             (is (= (get-in @(:app-db inner-app) [:route :data])
+                    {:page "test2"}))
+
+             (is (= "/test1" (.-pathname js/location)))
+             (is (= "#!test2" (.-hash js/location)))
+
+
+             (sim/click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db outer-app) [:route :data])
+                    {:page "outer-app" :foo "Bar"}))
+
+             (is (= (get-in @(:app-db inner-app) [:route :data])
+                    {:page "test2"}))
+
+             (is (= "/outer-app" (.-pathname js/location)))
+             (is (= "?foo=Bar" (.-search js/location)))
+             (is (= "#!test2" (.-hash js/location)))
+             
+             (.click (.getElementById js/document "hashtag-link"))
+             (<! (timeout 20))
+
+             (is (= (get-in @(:app-db outer-app) [:route :data])
+                    {:page "outer-app" :foo "Bar"}))
+
+             (is (= (get-in @(:app-db inner-app) [:route :data])
+                    {:page "inner-app" :baz "Qux"}))
+
+             (is (= "/outer-app" (.-pathname js/location)))
+             (is (= "?foo=Bar" (.-search js/location)))
+             (is (= "#!inner-app?baz=Qux" (.-hash js/location)))
+             
+             
+             (app-state/stop! outer-app)
+             (app-state/stop! inner-app)
+             (unmount1)
+             (unmount2)
+             (.pushState js/history nil "" current-href)
+             (<! (timeout 20))
+
+             (done)))))
+
+
+(deftest history-router-back
+  (let [[c unmount] (make-container)
+        current-href (.-href js/location)
+        _ (.pushState js/history nil "", "page-name?baz=qux")
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :history
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:a {:href (ui/url ctx {:page "page-name2" :foo "Bar"})}
+                                               [:span.link-el "Link"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (sim/click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:foo "Bar"
+                     :page "page-name2"}))
+
+             (.back js/history)
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+
+             (app-state/stop! app)
+             (unmount)
+             (.pushState js/history nil "", current-href)
+             (<! (timeout 20))
+             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+             (done)))))
+

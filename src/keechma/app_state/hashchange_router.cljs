@@ -34,6 +34,6 @@
   (url [this params]
     (str "#!" (router/map->url (:routes this) params))))
 
-(defn constructor [routes routes-chan]
+(defn constructor [routes routes-chan _]
   (let [listener (partial hashchange-listener (router/expand-routes routes) routes-chan)]
     (core/start! (->HashchangeRouter (router/expand-routes routes) routes-chan listener))))

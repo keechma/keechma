@@ -5,7 +5,8 @@
             [keechma.controller-manager :as controller-manager]
             [keechma.app-state.core :as app-state-core]
             [keechma.app-state.hashchange-router :as hashchange-router]
-            [keechma.app-state.react-native-router :as react-native-router])
+            [keechma.app-state.react-native-router :as react-native-router]
+            [keechma.app-state.history-router :as history-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -51,7 +52,7 @@
 (defn start-selected-router! [state constructor]
   (let [routes (:routes state) 
         routes-chan (:routes-chan state)
-        router (constructor routes routes-chan)]
+        router (constructor routes routes-chan state)]
     (-> state
         (assoc :router router)
         (add-stop-fn (fn [s]
@@ -63,6 +64,7 @@
     (case router
       :hashchange (start-selected-router! state hashchange-router/constructor)
       :react-native (start-selected-router! state react-native-router/constructor)
+      :history (start-selected-router! state history-router/constructor)
       state)))
 
 (defn ^:private resolve-main-component [state]
@@ -83,9 +85,13 @@
 (defn app-renderer [state]
   [(fn []
       (let [route-data (get-in @(:app-db state) [:route :data])
-            main-component (:main-component state)]
+            main-component (:main-component state)
+            router (:router state)
+            route-wrap-component (app-state-core/wrap-component router)]
         (when route-data
-          [main-component])))])
+          (if route-wrap-component
+            [route-wrap-component [main-component]]
+            [main-component]))))])
 
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 

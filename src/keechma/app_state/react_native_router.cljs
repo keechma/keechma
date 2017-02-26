@@ -55,6 +55,6 @@
   (redirect! [this params]
     (navigate! :push params)))
 
-(defn constructor [_ routes-chan]
+(defn constructor [_ routes-chan _]
   (let [watch-id (keyword (gensym :route-watch))]
     (core/start! (->ReactNativeRouter routes-chan watch-id))))
