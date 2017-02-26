@@ -2,6 +2,8 @@
   (:require [cljs.core.async :refer [put!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
+(def not-implemented ::not-implemented)
+
 (defprotocol IController
   "Controllers in Keechma are the place where you put the code
   that has side-effects. They are managed by the [[keechma.controller-manager]]
@@ -61,9 +63,17 @@
   (params [this route-params]
     "Receives the `route-params` and returns either the `params` for the controller or `nil`")
   (report [this direction name payload] [this direction name payload severity])
+  (context [this] [this key]
+    "Return the context passed to application.")
   (start [this params app-db]
     "Called when the controller is started. Receives the controller `params` (returned by the
     `params` function) and the application state. It must return the application state.")
+  (wake [this params app-db]
+    "Called when the controller is started from the saved state stored on the server. It will be
+     called instead of the `start` function if the `ssr-handler` function is implemented. This
+     allows you to manually revive the serialized data if needed. Usually this function is not
+     needed, but if you for instance start the inner application from the controller, you can
+     use this function to wake the inner app.")
   (stop [this params app-db]
     "Called when the controller is stopped. Receives the controller `params` (returned by the
     `params` function) and the application state. It must return the application state.")
@@ -74,6 +84,11 @@
     "Called after the `start` function. You can listen to the commands on the `in-chan` 
     inside the `go` block. This is the function in which you implement anything that reacts
     to the user commands (coming from the UI).")
+  (ssr-handler [this app-db-atom done in-chan out-chan]
+    "Called in after the `start` (instead of the `handler` function) function in the server
+     side context. This function should call the `done` callback when it has completed the 
+     server side data loading. Returning `::not-implemented` which is a default behavior will
+     mark the controller as non server side.")
   (send-command [this command-name] [this command-name args]
     "Sends a command to another controller")
   (is-running? [this]
@@ -87,8 +102,16 @@
   IController
   (params [_ route-params] route-params)
   (start [_ params app-db] app-db)
+  (wake [_ params app-db] app-db)
   (stop [_ params app-db] app-db)
   (handler [_ _ _ _])
+  (ssr-handler [_ _ _ _ _]
+    not-implemented)
+  (context 
+    ([this] (:context this))
+    ([this key]
+     (let [key-vec (if (vector? key) key [key])]
+       (get-in this (into [:context] key-vec)))))
   (report
     ([this direction name payload] (report this direction name payload :info))
     ([this direction name payload severity]

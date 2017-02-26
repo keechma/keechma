@@ -27,11 +27,12 @@
    :subscriptions-cache (atom {})
    :components {}
    :controllers {}
+   :context {}
    :html-element nil
    :stop-fns []})
 
 (defn ^:private process-config [config]
-  (let [name (keyword (gensym (:name config)))
+  (let [name [(:name config) (keyword (gensym "v"))]
         reporter (partial (:reporter config) name)]
     (assoc config
            :name name
@@ -39,12 +40,16 @@
 
 (defn ^:private add-reporter-to-controllers [controllers reporter]
   (reduce-kv (fn [m k v]
-            (assoc m k (assoc v :reporter reporter))) {} controllers))
+               (assoc m k (assoc v :reporter reporter))) {} controllers))
 
 (defn ^:private add-redirect-fn-to-controllers [controllers router]
   (reduce-kv (fn [m k v]
-            (assoc m k (assoc v :redirect-fn
-                              (partial app-state-core/redirect! router)))) {} controllers))
+               (assoc m k (assoc v :redirect-fn
+                                 (partial app-state-core/redirect! router)))) {} controllers))
+
+(defn ^:private add-context-to-controllers [controllers context]
+  (reduce-kv (fn [m k v]
+               (assoc m k (assoc v :context context))) {} controllers))
 
 (defn ^:private add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
@@ -84,14 +89,12 @@
 
 (defn app-renderer [state]
   [(fn []
-      (let [route-data (get-in @(:app-db state) [:route :data])
-            main-component (:main-component state)
+      (let [main-component (:main-component state)
             router (:router state)
             route-wrap-component (app-state-core/wrap-component router)]
-        (when route-data
-          (if route-wrap-component
-            [route-wrap-component [main-component]]
-            [main-component]))))])
+        (if route-wrap-component
+          [route-wrap-component [main-component]]
+          [main-component])))])
 
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 
@@ -103,7 +106,9 @@
 (defn ^:private start-controllers [state]
   (let [router (:router state)
         reporter (:reporter state)
+        context (:context state)
         controllers (-> (:controllers state)
+                        (add-context-to-controllers context)
                         (add-reporter-to-controllers reporter)
                         (add-redirect-fn-to-controllers router))
         routes-chan (:routes-chan state)
@@ -129,11 +134,6 @@
         subs-cache (:subscriptions-cache state)
         cached-subscriptions (into {} (map #(add-sub-cache subs-cache %) subscriptions))]
     (assoc state :subscriptions cached-subscriptions)))
-
-(defn ^:private log-state [state]
-  (do
-    (.log js/console (clj->js state))
-    state))
 
 (defn restore-app-db [old-app new-app]
   (let [old-app-db @(:app-db old-app)
@@ -197,7 +197,8 @@
          (start-router!)
          (start-controllers)
          (resolve-main-component)
-         (mount)))))
+         (mount)
+         (with-meta {::app-state true})))))
 
 (defn stop!
   "Stops the application. `stop!` function receives the following as the arguments:

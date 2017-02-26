@@ -17,7 +17,7 @@
             (.getElementById js/document "history_state0")
             (.getElementById js/document "history_iframe0")))
 
-(defrecord HashchangeRouter [routes routes-chan hashchange-listener]
+(defrecord HashchangeRouter [routes routes-chan hashchange-listener app-db]
   IRouter
   (start! [this]
     (let [history (get-history)
@@ -26,6 +26,7 @@
       (events/listen history EventType/NAVIGATE (:hashchange-listener this))
       (doto history (.setEnabled true))
       (put! (:routes-chan this) current-route-params)
+      (swap! app-db assoc :route current-route-params)
       (assoc this :history history)))
   (stop! [this]
     (events/unlisten (:history this) EventType/NAVIGATE (:hashchange-listener this)))
@@ -34,6 +35,6 @@
   (url [this params]
     (str "#!" (router/map->url (:routes this) params))))
 
-(defn constructor [routes routes-chan _]
+(defn constructor [routes routes-chan state]
   (let [listener (partial hashchange-listener (router/expand-routes routes) routes-chan)]
-    (core/start! (->HashchangeRouter (router/expand-routes routes) routes-chan listener))))
+    (core/start! (->HashchangeRouter (router/expand-routes routes) routes-chan listener (:app-db state)))))

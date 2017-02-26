@@ -797,3 +797,56 @@
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
 
+(defrecord ContextController []
+  controller/IController
+  (params [_ _] true)
+  (start [this _ app-db]
+    (let [context-fn-1 (controller/context this :context-fn-1)
+          context-fn-2 (controller/context this [:context :fn-2])]
+      (context-fn-1)
+      (context-fn-2)
+      app-db)))
+
+(deftest passing-context-to-controllers
+  (let [call-count (atom 0)
+        context-fn-1 (fn [] (swap! call-count inc))
+        context-fn-2 (fn [] (swap! call-count #(+ % 2)))
+        [c unmount] (make-container)
+        app-definition {:controllers {:context (->ContextController)}
+                        :html-element c
+                        :context {:context-fn-1 context-fn-1
+                                  :context {:fn-2 context-fn-2}}
+                        :components {:main {:renderer (fn [_] [:div "test"])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 3 @call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(defrecord ContextController2 []
+  controller/IController
+  (params [_ _] true)
+  (start [this _ app-db]
+    (let [context-fn-1 (controller/context this)]
+      (context-fn-1)
+      app-db)))
+
+(deftest passing-context-to-controllers2
+  (let [call-count (atom 0)
+        context-fn-1 (fn [] (swap! call-count inc))
+        [c unmount] (make-container)
+        app-definition {:controllers {:context (->ContextController2)}
+                        :html-element c
+                        :context  context-fn-1
+                        :components {:main {:renderer (fn [_] [:div "test"])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= 1 @call-count))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))

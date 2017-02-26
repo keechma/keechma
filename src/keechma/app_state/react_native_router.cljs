@@ -40,7 +40,7 @@
      (reset! route-atom (action-fn @route-atom payload)))))
 
 
-(defrecord ReactNativeRouter [routes-chan watch-id]
+(defrecord ReactNativeRouter [routes-chan watch-id app-db]
   IRouter
   (start! [this]
     (let [routes-chan (:routes-chan this)
@@ -49,12 +49,13 @@
                  (fn [_ _ _ route-data]
                    (put! routes-chan route-data)))
       (put! routes-chan @route-atom)
+      (swap! app-db assoc :route @route-atom)
       this))
   (stop! [this]
     (remove-watch route-atom (:watch-id this)))
   (redirect! [this params]
     (navigate! :push params)))
 
-(defn constructor [_ routes-chan _]
+(defn constructor [_ routes-chan state]
   (let [watch-id (keyword (gensym :route-watch))]
-    (core/start! (->ReactNativeRouter routes-chan watch-id))))
+    (core/start! (->ReactNativeRouter routes-chan watch-id (:app-db state)))))

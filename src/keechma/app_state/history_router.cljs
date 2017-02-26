@@ -48,7 +48,7 @@
 
 (defn link? [el]
   (and (.-href el)
-       (= "A" (.-tagName el))))
+       (= "a" (str/lower-case (.-tagName el)))))
 
 (defn link-el [el]
   (loop [current-el el]
@@ -100,13 +100,14 @@
       (add-trailing-slash)
       (add-leading-slash)))
 
-(defrecord HistoryRouter [routes routes-chan base-href]
+(defrecord HistoryRouter [routes routes-chan base-href app-db]
   IRouter
   (start! [this]
     (let [handler (fn [href]
                     (put! routes-chan (router/url->map routes (route-url href base-href))))]
-      (handler (.-href js/location))
       ((:bind urlchange-dispatcher) handler)
+      (handler (.-href js/location))
+      (swap! app-db assoc :route (router/url->map routes (route-url (.-href js/location) base-href)))
       (assoc this :urlchange-handler handler)))
   (stop! [this]
     ((:unbind urlchange-dispatcher) (:urlchange-handler this)))
@@ -132,5 +133,5 @@
     (make-url routes base-href params)))
 
 (defn constructor [routes routes-chan state]
-  (let [base-href (or (:base-href state) "/")]
-    (core/start! (->HistoryRouter (router/expand-routes routes) routes-chan (process-base-href base-href)))))
+  (let [base-href (process-base-href (or (:base-href state) "/"))]
+    (core/start! (->HistoryRouter (router/expand-routes routes) routes-chan base-href (:app-db state)))))

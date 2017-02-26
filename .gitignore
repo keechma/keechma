@@ -12,3 +12,4 @@ pom.xml
 .repl
 .nrepl-port
 node_modules
+pom.xml.asc

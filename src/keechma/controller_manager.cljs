@@ -35,13 +35,13 @@
         name (:name config)
         app-db (:app-db config)
         params (:params config)
-        controller (-> controller
-                       (assoc :params params)
-                       (assoc :route-params (:route-params config))
-                       (assoc :in-chan in-chan)
-                       (assoc :out-chan out-chan)
-                       (assoc :name name)
-                       (assoc :running (fn [] (get-in @app-db [:internal :running-controllers name])))) 
+        controller (assoc controller
+                          :params params
+                          :route-params (:route-params config)
+                          :in-chan in-chan
+                          :out-chan out-chan
+                          :name name
+                          :running (fn [] (get-in @app-db [:internal :running-controllers name]))) 
         with-started (keechma.controller/start controller params app-db-snapshot)]
     (reporter :app :out :controller [(:name controller) :start] params :info)
     (reset! app-db with-started)
@@ -142,12 +142,10 @@
   the name of the command should look like this `[:controlnler-key :command-name]`. Controller manager will route the `:command-name` command to the appropriate controller based on the `:controller-key`. Controller key is the key under which the controller was registered in the `controllers` argument.
   "
 
-  
   [route-chan commands-chan app-db controllers reporter]
   (reporter :app :in nil :start nil :info)
   (let [stop-route-block (chan)
         stop-command-block (chan)
-        scheduled-updates (atom []) 
         running-chans
         [(go
            (loop []
