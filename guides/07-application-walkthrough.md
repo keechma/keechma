@@ -1,6 +1,6 @@
 # Application Walkthrough
 
-Application I'll be using as an example can be found on [Github](http://github.com/keechma/keechma-place-my-order). It is a ClojureScript rewrite of the [DoneJS app](http://place-my-order.com) that is covered in the [DoneJS Guides](http://donejs.com/place-my-order.html).
+The application I'll be using as an example can be found on [Github](http://github.com/keechma/keechma-place-my-order). It is a ClojureScript rewrite of the [DoneJS app](http://place-my-order.com) that is covered in the [DoneJS Guides](http://donejs.com/place-my-order.html).
 
 I picked this as an example app for three reasons:
 
@@ -8,7 +8,7 @@ I picked this as an example app for three reasons:
 2. It's an app that was created to showcase a different framework, so it was interesting to see how the ideas behind the frameworks differ
 3. Place-my-order app implements the backend code (including the WebSockets) which allowed me to focus on frontend code only
 
-I want to point out that DoneJS implementation has more functionality (like server side rendering), and is implemented in a very different way. If you're doing JavaScript development, definitely check it out, it's pretty interesting.
+I want to point out that DoneJS implementation has more functionality (like server-side rendering), and is implemented in a very different way. If you're doing JavaScript development, definitely check it out, it's pretty interesting.
 
 ## Let's start
 
@@ -16,7 +16,7 @@ Place-my-order app is a minimal implementation of the restaurant ordering servic
 
 Before we start I recommend you to either install the application locally (you can find the instructions [here](https://github.com/keechma/keechma-place-my-order)) or go to http://place-my-order.com and click around to get the feeling of how the application works.
 
-### High level architecture overview
+### High-level architecture overview
 
 Here is the list of requirements for the app:
 
@@ -35,7 +35,7 @@ Here is the list of requirements for the app:
 3. Order history page
     1. Order history page shows all placed orders
     2. Users can change the order status (`new -> preparing -> delivery -> delivered`)
-    3. Order history should be synchronised on all open pages through WebSockets
+    3. Order history should be synchronized on all open pages through WebSockets
 
 ### Routes
 
@@ -47,15 +47,15 @@ Translating the requirements to routes gives us the following:
 - `/restaurants/:restaurant-slug/order` - restaurant ordering page
 - `/order-history` - order history page
 
-Routes are the central place in Keechma apps, and they are treated as a minimal representation of the application state. Based on the route we know what data needs to be loaded when user lands on that route:
+Routes are the central place in Keechma apps, and they are treated as a minimal representation of the application state. Based on the route we know what data needs to be loaded when a user lands on that route:
 
 - `/` - Nothing, landing page is static
 - `/restaurants` - list of US states, everything else is incrementally loaded based on user's actions
-- `/restaurants/:restaurant-slug` - restaurant entity, based on the `restaurant-slug` 
-- `/restaurants/:restaurant-slug/order` - restaurant entity, based on the `restaurant-slug` 
+- `/restaurants/:restaurant-slug` - restaurant entity, based on the `restaurant-slug`
+- `/restaurants/:restaurant-slug/order` - restaurant entity, based on the `restaurant-slug`
 - `/order-history` - Order history list
 
-This way of thinking allows us to enforce strict top - down data flow. UI components never request any data, it is provided to them by controllers, based on the route params.
+This way of thinking allows us to enforce strict top-down data flow. UI components never request any data, it is provided to them by controllers, based on the route params.
 
 ### Controllers
 
@@ -65,14 +65,14 @@ Controllers in Keechma apps have the following purposes:
 - React to user actions by listening to commands sent from the UI
 - React to any other commands (for instance WebSocket messages)
 
-Controllers communicate with outer world through channels, and are the only place in the application where you can mutate the application state.
+Controllers communicate with the outer world through channels and are the only place in the application where you can mutate the application state.
 
 Place-my-order app is implemented with five controllers:
 
 1. Restaurants controller
-    + Loads the states list
+    + Loads the state's list
     + Based on user selection loads the cities list (for the selected state)
-    + Based on user selection loads the restaurants list (for the selected city)
+    + Based on user selection loads the restaurants' list (for the selected city)
 2. Restaurant controller
     + Loads the selected restaurant
 3. Order controller
@@ -89,11 +89,11 @@ For instance, order controller is active both on the route `/restaurants/:restau
 
 ### EntityDB
 
-Purpose of the entity database is to give you a place where you can store the entity data. Anything that has some kind of identity (for instance the `id` column) should be managed by the EntityDB.
+The purpose of the entity database is to give you a place where you can store the entity data. Anything that has some kind of identity (for instance the `id` column) should be managed by the EntityDB.
 
 It can also handle relations between entities, but this is out of the scope of this article.
 
-EntityDB is set up in the [`client/src/edb.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/edb.cljs) file but we only care about lines 4 - 8. Rest of the file is syntactic sugar that allows a bit nicer API to app state mutation.
+EntityDB is set up in the [`client/src/edb.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/edb.cljs) file but we only care about lines 4 - 8. The rest of the file is syntactic sugar that allows a bit nicer API to app state mutation.
 
 ```clojure
 (def dbal (edb/make-dbal {:states {:id :short}
@@ -113,10 +113,10 @@ When developing frontend applications (in most cases) there are two options:
 - Each component can get its data from the parent
 - Each component depends on some global store and gets its data from there
 
-Both of these have their own problems, but Keechma takes the middle road. Each component gets the data injected from the outside, but without global dependencies. The way it works is the following:
+Both of these have their own problems, but Keechma takes the middle road. Each component gets the data injected from the outside but without global dependencies. The way it works is the following:
 
 1. Each component defines the component record which lists the component dependencies, both for data and for the children component it renders
-2. When application is started each component's renderer function (which is a Reagent component) is partially applied with the context that can be used to resolve data and children components.
+2. When the application is started each component's renderer function (which is a Reagent component) is partially applied with the context that can be used to resolve data and children components.
 
 This allows us to define components that are completely decoupled from the rest of the system. They don't care about the data they render or about the children components they might use to render that data.
 
@@ -204,13 +204,13 @@ Components are composed to systems. In place-my-order app this happens in the [`
 
 All we have to do is to require all components and map them to their keys in the `system` map. When starting the app Keechma will resolve the dependencies (using the excellent [`dependency`](https://github.com/stuartsierra/dependency) library by Stuart Sierra) and partially apply them to each component.
 
-In place-my-order app there is no need for it, but you could manually override some of the dependencies and automatically resolve the rest.
+In place-my-order app, there is no need for it, but you could manually override some of the dependencies and automatically resolve the rest.
 
-You might notice that some components have `:topic` assoc-ed to them. This tells component on which topic it should send commands. Topic is the key that you used to register the controller (more about that later).
+You might notice that some components have `:topic` assoc-ed to them. This tells component on which topic it should send commands. The topic is the key that you used to register the controller (more about that later).
 
 ### Subscriptions
 
-Subscriptions in Keechma work similar to Re/Frame's subscriptions. 
+Subscriptions in Keechma work similar to Re/Frame's subscriptions.
 
 ```clojure
 (ns client.subscriptions
@@ -251,7 +251,7 @@ Subscriptions in Keechma work similar to Re/Frame's subscriptions.
           :order-history order-history})
 ```
 
-Each subscription is a function that takes app state atom as argument and returns the subset of data from the app state.
+Each subscription is a function that takes the app's state atom as an argument and returns the subset of data from the app state.
 
 ### Defining the app
 
@@ -281,11 +281,11 @@ Keys in the `:controllers` map are topics on which each controller listens to co
 
 ## App functionality
 
-The previous part was a high level overview of the application. In the next part I'll go through each functionality and show you how it was implemented.
+The previous part was a high-level overview of the application. In the next part, I'll go through each functionality and show you how it was implemented.
 
 ### Landing page (`/`)
 
-Landing page is static, it only shows the text and the image, so it's just rendered in the [`src/client/components/landing.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/landing.cljs) component.
+A landing page is static, it only shows the text and the image, so it's just rendered in the [`src/client/components/landing.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/landing.cljs) component.
 
 ### Restaurants page (`/restaurants`)
 
@@ -293,11 +293,11 @@ Restaurants page is managed by the [`src/client/controllers/restaurants.cljs`](h
 
 The controller file has a bunch of comments which explain what's going on. I recommend you to read them before you continue.
 
-The restaurants controller does the following:
+The restaurants' controller does the following:
 
 - Loads the `states` list
-- Waits on the user command to load the `cities` list (when user selects the state)
-- Waits on the user command to load the `restaurants` list (when user selects the city)
+- Waits for the user command to load the `cities` list (when user selects the state)
+- Waits for the user command to load the `restaurants` list (when user selects the city)
 
 The components used to render this page are:
 
@@ -313,11 +313,11 @@ Restaurants page is managed by the [`src/client/controllers/restaurant.cljs`](ht
 
 The controller file has a bunch of comments which explain what's going on. I recommend you to read them before you continue.
 
-Only thing that the `restaurant` controller does is loading of the restaurant based on the slug.
+The only thing that the `restaurant` controller does is the loading of the restaurant based on the slug.
 
 It is rendered by the [`src/client/components/restaurant_detail.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/restaurant_detail.cljs) component.
 
-On the page there will be a link that will take us to the restaurant order page.
+On the page, there will be a link that will take us to the restaurant order page.
 
 ### Restaurant order page (`/restaurants/:slug/order`)
 
@@ -326,9 +326,9 @@ The restaurant order page is managed by two controllers:
 1. [`src/client/controllers/restaurant.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/controllers/restaurant.cljs) controller
 2. [`src/client/controllers/order.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/controllers/order.cljs) controller
 
-Both controller files have bunch of comments which explain what's going on. I recommend you to read them before you continue.
+Both controller files have a bunch of comments which explain what's going on. I recommend you to read them before you continue.
 
-The restaurant controller is responsible for loading of the restaurant information, and the order controller manages the creation of new order.
+The restaurant controller is responsible for the loading of the restaurant information, and the order controller manages the creation of new order.
 
 The components used to render this page are:
 
@@ -337,7 +337,7 @@ The components used to render this page are:
   - It will render the tabbed menu list (Lunch menu and Dinner menu)
   - It will collect the order data in it's local state
   - When the user clicks the "Place my order!" button it will validate the form data and send the `save-order` command to the controller
-- [`src/client/components/order_report.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/order_report.cljs) - this component renders the details of the `current_order`. If user clicks on the "Place another order!" link, it will send the `clear-order` command which will cause the current order to be cleared from the app state, so the `order_form` component will be rendered again.
+- [`src/client/components/order_report.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/order_report.cljs) - this component renders the details of the `current_order`. If the user clicks on the "Place another order!" link, it will send the `clear-order` command which will cause the current order to be cleared from the app state, so the `order_form` component will be rendered again.
 
 ### Order history page (`/order-history`)
 
@@ -346,14 +346,14 @@ The order history page is managed by two controllers:
 1. [`src/client/controllers/order_history.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/controllers/order_history.cljs) controller
 2. [`src/client/controllers/order.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/controllers/order.cljs) controller
 
-Both controller files have bunch of comments which explain what's going on. I recommend you to read them before you continue.
+Both controller files have a bunch of comments which explain what's going on. I recommend you to read them before you continue.
 
-The order history controller is responsible for loading of the order history, and the order controller manages the `status` change for each of the rendered orders.
+The order history controller is responsible for the loading of the order history, and the order controller manages the `status` change for each of the rendered orders.
 
 The components used to render this page are:
 
 - [`src/client/components/order_history.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/order_history.cljs) - this component partitions the order history list based on the order status. It also renders all of the orders with the `order_list_item` component.
-- [`src/client/components/order_list_item.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/order_list_item.cljs) - this component renders one order. It will also send the `mark-order` or `delete-order` command to the `order` controller based on the user actions. 
+- [`src/client/components/order_list_item.cljs`](https://github.com/keechma/keechma-place-my-order/blob/master/client/src/client/components/order_list_item.cljs) - this component renders one order. It will also send the `mark-order` or `delete-order` command to the `order` controller based on the user actions.
 
 ## Vacuuming the entity db
 
@@ -365,7 +365,7 @@ When you have a single page app, it is easy to accumulate bunch of garbage in yo
 
 EntityDB ensures that when you render an entity multiple times on the page, you always get the same object. This way if you change the entity in one place, it is automatically updated anywhere that entity is rendered. You don't have to do any synchronization, everything is taken care of automatically.
 
-This is a feature I've used for years in [CanJS](http://canjs.com), it's extremely convinient and it allows you to avoid whole class of bugs related to the data synchronization.
+This is a feature I've used for years in [CanJS](http://canjs.com), it's extremely convenient and it allows you to avoid a whole class of bugs related to the data synchronization.
 
 In CanJS it works in the following way:
 
@@ -373,10 +373,10 @@ In CanJS it works in the following way:
 - Each time this model instance is rendered in the page, CanJS increments the reference count for that model instance
 - If that same model instance is loaded from some other place, the data will be merged with the one in the global store, and the same object will be returned
 - When the user updates the model instance, it is mutated in place and changes are applied everywhere that model instance was rendered.
-- When the DOM changes, and the model instance is removed from the screen, CanJS decrements the reference count for that model instance
+- When the DOM changes and the model instance is removed from the screen, CanJS decrements the reference count for that model instance
 - When the reference count is zero, item is removed from the global store
 
-This works for CanJS because it uses the mutable data structures, and because CanJS controls the whole stack, from models to the rendering.
+This works for CanJS because it uses the mutable data structures and because CanJS controls the whole stack, from models to the rendering.
 
 In ClojureScript, we can't do that. ClojureScript data structures are immutable, so we can't hold the reference to the entity. Also, Reagent (and React) don't do any book keeping when the item is rendered on the page.
 
@@ -386,12 +386,13 @@ EntityDB solves this problem in the following way:
 - When you call `edb/insert-collection` or `edb/insert-named-item` it will put the entity in the store, and replace items in the collection or in the named item with the `id` of that item
 - When you call `edb/get-collection` or `edb/get-named-item` it will return whatever is in the global store based on the `id`.
 
-All of this happens under the hood, and we can still use the nice API to interact with the EntityDB, but it comes with a cost: When you call `edb/remove-collection` or `edb/remove-named-item` it doesn't really remove anything from the store, it just removes those collections or named items. It works in this way because each item in the store can exist in multiple collections or named items.
+All of this happens under the hood, and we can still use the nice API to interact with the EntityDB, but it comes at a cost: When you call `edb/remove-collection` or `edb/remove-named-item` it doesn't really remove anything from the store, it just removes those collections or named items. It works in this way because each item in the store can exist in multiple collections or named items.
 
-That's why the EntityDB implements the `vacuum` function. This function will go through all stores, and remove items that are not referenced in any collections or named items.
+That's why the EntityDB implements the `vacuum` function. This function will go through all stores and remove items that are not referenced in any collections or named items.
 
 Since Keechma knows what data is needed based on the route, the vacuum controller can clean the database on each route and remove the obsolete items.
 
 ## Conclusion
 
 Keechma is a small framework, but I believe it brings a lot of value to the development. I believe that the problems it solves are the problems that each developer encounters while developing single page apps. Even if you don't end up using Keechma, I hope you got some ideas how to approach these problems and solve them.
+

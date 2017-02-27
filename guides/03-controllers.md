@@ -3,36 +3,36 @@
 Controllers in Keechma react to route changes and implement any code that has side effects.
 
 - Controllers make AJAX requests.
-- Controllers mutate the application state
+- Controllers mutate the application's state
 - Controllers can connect to web sockets and react to received messages, etc.
 
-Anything that produces a side effect is implemented in a controller. **Controllers are the only place in the application where you have the access to the application state atom.**
+Anything that produces a side effect is implemented in a controller. **Controllers are the only place in the application where you have access to the application's state atom.**
 
-For each URL you can have multiple controllers running at once, each one managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsobilites.
+For each URL you can have multiple controllers running at once. Each controller managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsobilites.
 
 ## How controllers work
 
 Each controller is implemented as a Clojure record which implements the `controller/IController` protocol. This protocol defines multiple functions, but right now we're only interested in the `params` function.
 
-`params` function receives the route params and returns the subset of params that are needed for the controller to run or `nil`. Controller Manager relies on the return value from the `params` function to decide if the controller should be started, stopped or left alone.
+The `params` function receives the route params and returns a subset of the params needed for the controller to run or `nil`. The Controller Manager relies on the return value of the `params` function to decide if the controller should be started, stopped or left alone.
 
-Whenever the URL changes, the manager controller will do the following:
+Whenever the URL changes, the Controller Manager will do the following:
 
-1. It will call `params` function of all registered controllers
-2. It will compare returned value to the last returned value (returned on the previous URL change)
+1. It will call the `params` function of all registered controllers
+2. It will compare the returned value to the previous value (returned on the previous URL change)
 3. Based on the returned value it will do the following:
-    1. If previous value was `nil` and current value is `nil` it will do nothing
-    2. If previous value was `nil` and current value is not `nil` it will start the controller
-    3. If previous value was not `nil` and current value is `nil` it will stop the controller
-    4. If previous value was not `nil` and current value is not `nil` but those values are same it will do nothing
-    5. If previous value was not `nil` and current value is not `nil` but those values are different it will restart the controller
+    1. If the previous value was `nil` and the current value is `nil` it won't do a thing
+    2. If the previous value was `nil` and the current value is not `nil` it will start the controller
+    3. If the previous value was not `nil` and the current value is `nil` it will stop the controller
+    4. If the previous value was not `nil` and the current value is not `nil` but those values are same, it won't do a thing
+    5. If the previous value was not `nil` and the current value is not `nil` but those values are different it will restart the controller
 
 ### An example
 
-Let's say you have to implement a note application (similar to Evernote). You have two URLS:
+Let's say you have to implement a note taking application (similar to Evernote). You have two URLs:
 
-1. A URL that takes you to the list of notes
-2. A URL that will show the list of notes and a detailed view of the selected note.
+1. An URL that takes you to the list of notes
+2. An URL that will show the list of notes and a detailed view of the selected note.
 
 The routes could look like this:
 
@@ -53,7 +53,7 @@ Since we need to show the list of notes on both URLs, the `NoteList` controller 
         (get-in route-params [:data :page])))
 ```
 
-The `NoteList` controller's `params` function ensures that it will be running on each url that has the `:page` param.
+The `NoteList` controller's `params` function ensures that it will be running on each URL that has the `:page` param.
 
 The `NoteDetails` controller should run only when the `:note-id` param is present:
 
@@ -64,24 +64,24 @@ The `NoteDetails` controller should run only when the `:note-id` param is presen
         (get-in route-params [:data :note-id])))
 ```
 
-When the user is on the `/starred` page the `NoteDetails` controller will not be running. It will run only on the `/starred/1` URL. 
+When the user is on the `/starred` page the `NoteDetails` controller will not be running. It will only run on the `/starred/1` URL.
 
 <div class="diagram"><img src="/controller_manager.svg" alt="Controllers" title="Controllers"></div>
 
 When using the controllers to manage the application state mutations you can ensure the following:
 
-1. State changes will be determenistic.
+1. State changes will be deterministic.
     - Based on the route, you know which controllers are running on the page.
 2. Data is loaded at the right time, when the controller is started.
-3. Domain logic is split into small, bite sized parts, each controller implements only the subset of the page logic.
+3. Domain logic is split into small, bite-sized parts, each controller implements only the subset of the page logic.
 
-**Controllers in Keechma are future proof**, if the UI layout was changed, and the note details page doesn't show the list of the notes anymore, the only thing that you would need to update is `NoteList` controller's `params` function, everything else would remain the same.
+**Controllers in Keechma are future proof**, if the UI layout changed, and the note details page doesn't show the list of notes anymore, the only thing that you would need to update is the `NoteList` controller's `params` function, everything else would remain the same.
 
-If React allows you to reason about your app like you're re - rendering everything every time something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
+If React allows you to reason about your app like you're re-rendering everything every time something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
 
 ## Handling the user actions
 
-Besides the data loading, controllers have another task. They react to user commands.
+Besides data loading, controllers have another task. They react to user commands.
 
 Whenever the user performs an action - clicks on a button or submits a form, that action is sent to the Controller Manager. Based on the `:topic` this action will be routed to the appropriate controller.
 
@@ -114,6 +114,7 @@ When you define the application config map (which will be used to start and stop
                  :components {:main button-component}})
 ```
 
-Controllers can only receive the commands if they are currently running. Otherwise the command will be dropped.
+Controllers can only receive commands if they are currently running. Otherwise, the command will be dropped.
 
 Read the API docs for the [Controller Manager](api/keechma.controller-manager.html) and for the [Controllers](api/keechma.controller.html).
+
