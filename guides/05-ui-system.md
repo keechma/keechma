@@ -1,40 +1,40 @@
 # UI System
 
-Keechma provides you with a way to write decoupled, reusable UI components. It's still using Reagent to implement and render the components, but adds some structure around it to keep the things clean.
+Keechma provides you with a way to write decoupled, reusable UI components. It's still using Reagent to implement and render the components but adds some structure around it to keep the things clean.
 
 ## Untangling the UI
 
-UI is the messiest part of the frontend application development. By default, the components are coupled to the application state, (sometimes) to their parent components and (almost always) to their child components.
+UI is the messiest part of frontend application development. By default, the components are coupled to the application's state, (sometimes) to their parent components and (almost always) to their child components.
 
->Most of our components take the entire app state as their data. Parent components don’t pass their children subcursors with just the bits they care about, they pass them the whole enchilada. Then we have a slew of paths defined in vars, which we use to extract the data we want. It’s not ideal. But it’s what we’ve had to do.
+>Most of our components take the entire app state as their data. Parent components don’t pass their children sub cursor with just the bits they care about, they pass them the whole enchilada. Then we have a slew of paths defined in vars, which we use to extract the data we want. It’s not ideal. But it’s what we’ve had to do.
 >
 >From the [Why We Use Om, and Why We’re Excited for Om Next](http://blog.circleci.com/why-we-use-om-and-why-were-excited-for-om-next/) blog post
 
-Keechma allows you to decouple the UI components without falling into one of the traps:
+Keechma allows you to decouple UI components without falling into one of these traps:
 
-- Passing data from the parent to the child componets
-  + it gets hard to mantain
+- Passing data from parent to child components
+  + it gets hard to maintain
   + moving components around is hard
-  + each component must know everything about any component below it
-- Global dependence on the application state
+  + each component must know about any component below it
+- Global dependence on the application's state
   + no way to reuse the components
   + testing is hard
 
-To achieve that, you'll need to write slighly more code but it pays off in the end. Let's say that you have a component that renders the list of users. That component is rendered inside the `user-page` component which is rendered inside the `layout` component.
+To achieve that, you'll need to write slightly more code but it pays off in the end. Let's say that you have a component that renders a list of users. That component is rendered inside the `user-page` component which is rendered inside the `layout` component.
 
-Neither the `user-page` or the `layout` component care about the data that the `user-list` component needs. User component declares it's dependencies in a Clojure record, and when it's rendered it will get it's dependencies injected from the application.
+Neither the `user-page` nor the `layout` component cares about the data that the `user-list` component needs. The user component declares it's dependencies in a Clojure record, and when it's rendered it will get it's dependencies injected from the application.
 
-The problem with this approach is that when you have a component that works like that, parent component has to be able to render the `user-list` component with the correct context. This means that the `user-page` can't just require the component. It needs to declare it's dependency on the `user-list` component which will allow it to render the correct **version** of the `user-list` component.
+The problem with this approach is that the parent component has to be able to render the `user-list` component with the correct context. This means that the `user-page` can't just require the component. It needs to declare it's dependency on the `user-list` component which will allow it to render the correct **version** of the `user-list` component.
 
-That's why Keechma implements the UI systems. UI systems allow components to get the right component and data dependencies injected in.
+That's why Keechma implements the UI systems. UI systems allow components to get the right sub-component and data dependencies injected in.
 
 ### Data dependencies
 
-Components declare dependencies on `subscriptions`. Subscriptions are functions that get the `app-state` atom passed in and return the subset of the data (They are almost identical to the [Re/Frame's subscriptions](https://github.com/Day8/re-frame#subscribe) although they are not global).
+Components declare dependencies on `subscriptions`. Subscriptions are functions that get the `app-state` atom passed in and return a subset of the data (They are almost identical to the [Re/Frame's subscriptions](https://github.com/Day8/re-frame#subscribe) although they are not global).
 
 ---
 
-To reiterate, each component needs to declare dependencies on the data it needs to render, and on the child components it needs to render - unless you're using pure components that have no dependencies, they can be required.
+To reiterate, each component needs to declare dependencies on the data it needs to render, and on the child components, it needs to render - unless you're using pure components that have no dependencies, they can be required.
 
 Example:
 
@@ -72,7 +72,7 @@ Example:
   (ui/constructor
     {:renderer layout-renderer
      :component-deps [:user-page]}))
-    
+
 (def system
   (ui/system
     {:main layout-component ;; system must have the `:main` component defined
@@ -95,7 +95,7 @@ This way of building UI components has some other advantages too. For instance i
      :user-page user-page-component
      :user-table my-super-awesome-user-component}))
 ;; returns the bound `:main` component which can be mounted in the page
-``` 
+```
 
 Both the `layout` and the `user-page` component will continue to work the same.
 
@@ -116,18 +116,18 @@ Another advantage is that you can compose UI systems. If you had a big app with 
      :news-page news-page-system}))
 ```
 
-This allows you to easily scale your application, without ever building an unamanageable monolith.
+This allows you to easily scale your application, without ever building an unmanageable monolith.
 
 ### Manual dependency resolving
 
-Let's say you have a generalized grid component, and you use it in a few places in your project, news list and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
+Let's say you have a generalized grid component and you use it in a few places in your project, eg. news list, and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
 
 ```clojure
-(def system 
+(def system
   (ui/system
-    {:user-grid (ui-component/resolve-subscription-dep 
+    {:user-grid (ui-component/resolve-subscription-dep
                   grid-component :list user-list)
-     :news-grid (ui-component/resolve-subscription-dep 
+     :news-grid (ui-component/resolve-subscription-dep
                   grid-component :list news-list))})
 ```
 
@@ -135,6 +135,7 @@ When you manually resolve dependencies, all unresolved dependencies will still b
 
 ---
 
-UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside.
+The UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside.
 
 Read the UI system [API docs](api/keechma.ui-component.html).
+
