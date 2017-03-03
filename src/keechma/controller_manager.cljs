@@ -27,10 +27,10 @@
                     new-params (controller/params controller route-params)
                     prev-params (get-in running-controllers [topic :params])]
                 (cond
-                  (and (nil? prev-params)       (nil? new-params)) acc
-                  (and (nil? prev-params)       (boolean new-params)) (assoc acc :start (assoc start topic new-params))
-                  (and (boolean prev-params)    (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
-                  (not= new-params prev-params) (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
+                  (and (nil? prev-params) (nil? new-params))     acc
+                  (and (nil? prev-params) (boolean new-params)) (assoc acc :start (assoc start topic new-params))
+                  (and (boolean prev-params) (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
+                  (not= new-params prev-params)                 (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
                   (= new-params prev-params)    (assoc acc :route-changed (conj route-changed topic))
                   :else acc))) plan controllers)))
 
@@ -44,6 +44,7 @@
               new-app-db (-> (controller/stop controller (:params controller) app-db)
                              (dissoc-in [:internal :running-controllers topic]))]
           (reporter :app :out :controller [topic :stop] nil :info)
+          (close! (:in-chan controller))
           (recur (rest stop) new-app-db))
         app-db))))
 
@@ -154,5 +155,5 @@
                (close! stop-command-block)
                (doseq [running running-chans] (close! running))
                (reset! app-db-atom
-                       (apply-stop-controllers @app-db-atom reporter (reduce (fn [acc c] (assoc acc (:name c) {})) {} controllers)))))}))
+                       (apply-stop-controllers @app-db-atom reporter (reduce (fn [acc [key controller]] (assoc acc key {})) {} controllers)))))}))
 

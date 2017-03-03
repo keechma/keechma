@@ -39,8 +39,14 @@
     (add-to-log state [:current-user :start]))
   (handler [this app-db in-chan out-chan]
     (go
-      (let [[command args] (<! in-chan)]
-        (reset! app-db (add-to-log @app-db [:users :command command])))))
+      (loop []
+        (let [[command args] (<! in-chan)]
+          (println "COMMAND" command)
+          (when command
+            (reset! app-db (add-to-log @app-db [:users :command command]))
+            (when (= :stop command)
+              (put! in-chan [:this-should-be :ignored]))
+            (recur))))))
   (stop [this params state]
     (do
       (controller/execute this :stop)
