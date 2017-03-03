@@ -100,16 +100,21 @@
            (go
              (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers (fn [& args])))
              (is (= (get-log [0]) (:log @app-db)))
+             (is (= [:session] (keys (get-in @app-db [:internal :running-controllers]))))
              (<! (timeout 20))
              (is (= (get-log (range 2)) (:log @app-db)))
 
              (>! route-chan {:page "users"})
              (<! (timeout 20))
              (is (= (get-log (range 3)) (:log @app-db)))
+             (is (= [:users :session] (keys (get-in @app-db [:internal :running-controllers]))))
+
 
              (>! route-chan {:page "current-user" :user-id 1})
              (<! (timeout 20))
              (is (= (get-log (range 4)) (:log @app-db)))
+             (is (= [:current-user :session] (keys (get-in @app-db [:internal :running-controllers]))))
+
 
              (>! commands-chan [[:session :test-command] "some argument"])
              (<! (timeout 20))
@@ -119,6 +124,7 @@
              (>! route-chan {:page "current-user" :user-id 2})
              (<! (timeout 20))
              (is (= (get-log (range 6)) (:log @app-db)))
+             (is (= [:current-user :session] (keys (get-in @app-db [:internal :running-controllers]))))
 
              ((:stop @app-instance))
              (done)))))
