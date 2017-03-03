@@ -250,7 +250,7 @@
            (go
              (app-state/start! app-definition false)
              (<! (timeout 1))
-             (is (= @kv-state-atom {:foo :bar}))
+             (is (= @kv-state-atom {:foo :bar :start :value}))
              (<! (timeout 20))
              (is (= @kv-state-atom {:foo :bar :baz :qux :start :value}))
              (done)))))

@@ -61,67 +61,6 @@
 
 ;; End Setup -----------------------------------------
 
-(deftest controllers-actions []
-  (let [running-controllers {:news {:params {:page 1 :per-page 10} :in-chan (chan)}
-                             :users {:params true :in-chan (chan)}
-                             :comments {:params {:news-id 1} :in-chan (chan)}}
-        controllers {:news {:page 2 :per-page 10}
-                     :users true
-                     :category {:id 1}
-                     :comments nil
-                     :image-gallery nil}
-        controllers-actions (controller-manager/controllers-actions
-                             running-controllers
-                             controllers)]
-    (is (= controllers-actions {:news :restart
-                                :comments :stop
-                                :category :start
-                                :users :route-changed}))))
-
-(deftest start-controller []
-  (let [new-state (controller-manager/start-controller
-                   (fn [_ _ _ _ _ _ _])
-                   {:what :that}
-                   foo-controller
-                   {:name :foo
-                    :params {:foo :bar}
-                    :app-db (atom {})
-                    :commands-chan (chan)})]
-    (is (= (dissoc new-state :internal) {:what :that :params {:foo :bar} :runs 1 :state :started}))
-    (is (instance? FooController (get-in new-state [:internal :running-controllers :foo])))
-    (is (= (get-in new-state [:internal :running-controllers :foo :params]) {:foo :bar}))))
-
-(deftest stop-controller [] 
-  (let [new-state (controller-manager/stop-controller
-                   (fn [_ _ _ _ _ _ _])
-                   {:what :that :internal {:running-controllers {:foo foo-controller}}} foo-controller
-                   {:name :foo})]
-    (is (= new-state {:what :that :state :stopped :internal {:running-controllers {}}}))))
-
-(deftest restart-controller []
-  (let [app-db (atom {})
-        started-state (controller-manager/start-controller 
-                       (fn [_ _ _ _ _ _ _])
-                       {:what :that}
-                       foo-controller
-                       {:name :foo
-                        :app-db app-db
-                        :params {:start 1}
-                        :commands-chan (chan)})
-        started-controller (get-in started-state [:internal :running-controllers :foo])
-        restarted-state (controller-manager/restart-controller
-                         (fn [_ _ _ _ _ _ _])
-                         started-state
-                         started-controller
-                         foo-controller
-                         {:name :foo
-                          :app-db app-db
-                          :params {:start 2}
-                          :commands-chan (chan)})]
-    (is (= (dissoc restarted-state :internal) {:what :that :params {:start 2} :state :started :runs 2}))
-    (is (instance? FooController (get-in restarted-state [:internal :running-controllers :foo])))
-    (is (= (get-in restarted-state [:internal :running-controllers :foo :params]) {:start 2}))))
-
 (deftest app-state []
   (let [route-chan (chan)
         commands-chan (chan)
@@ -159,16 +98,16 @@
            (go
              (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers (fn [_ _ _ _ _ _ _])))
              (>! route-chan {:page "users"})
-             ;; (<! (animation-frame 2))
-             ;; (is (= (get-log [0]) (:log @app-db)))
-             ;; (>! route-chan {:page "current-user" :user-id 1})
-             ;; (<! (animation-frame 2))
-             ;; (is (= (get-log (range 2)) (:log @app-db)))
-             ;; (>! commands-chan [[:session :test-command] "some argument"])
-             ;; (<! (animation-frame 2))
-             ;; (is (= (get-log (range 3)) (:log @app-db)))
-             ;; (>! route-chan {:page "current-user" :user-id 2})
-             ;; (<! (animation-frame 2))
-             ;; (is (= (get-log (range 4)) (:log @app-db)))
-             ;;((:stop @app-instance))
+             (<! (animation-frame 2))
+             (is (= (get-log [0]) (:log @app-db)))
+             (>! route-chan {:page "current-user" :user-id 1})
+             (<! (animation-frame 2))
+             (is (= (get-log (range 2)) (:log @app-db)))
+             (>! commands-chan [[:session :test-command] "some argument"])
+             (<! (animation-frame 2))
+             (is (= (get-log (range 3)) (:log @app-db)))
+             (>! route-chan {:page "current-user" :user-id 2})
+             (<! (animation-frame 2))
+             (is (= (get-log (range 4)) (:log @app-db)))
+             ((:stop @app-instance))
              (done)))))
