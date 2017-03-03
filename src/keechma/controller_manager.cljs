@@ -4,12 +4,10 @@
             [keechma.controller :as controller])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
 
-
 (defn ^:private send-command-to [reporter controller command-name args] 
   (reporter :controller :in (:name controller) command-name args :info)
   (put! (:in-chan controller) [command-name args])
   controller)
-
 
 (defn ^:private route-command-to-controller [reporter controllers command-name command-args]
   (let [[controller-name command-name] command-name
@@ -122,6 +120,7 @@
 
   [route-chan commands-chan app-db-atom controllers reporter]
   (reporter :app :in nil :start nil :info)
+  (apply-route-change reporter (:route @app-db-atom) app-db-atom commands-chan controllers)
   (let [stop-route-block (chan)
         stop-command-block (chan)
         running-chans
@@ -135,7 +134,8 @@
              (let [[val channel] (alts! [stop-route-block route-chan])]
                (when (and (not= channel stop-route-block) val)
                  (let [route-params val]
-                   (apply-route-change reporter route-params app-db-atom commands-chan controllers)
+                   (when (not= route-params (:route @app-db-atom))
+                     (apply-route-change reporter route-params app-db-atom commands-chan controllers))
                    (recur))))))
          (go
            (loop []

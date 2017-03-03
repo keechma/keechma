@@ -69,10 +69,16 @@
                      :current-user (->CurrentUserController)
                      :session (->SessionController)}
         app-instance (atom nil)
-        log [;; first route
-             [[:users :start] 
-              [:session :start]
-              [:session :command :start]]
+        log [
+             ;; app-start
+             [[:session :start]]
+
+             ;; after the session handler was called
+             [[:session :command :start]]
+
+              ;; first route
+             [[:users :start]
+              [:session :command :route-changed]]
 
              ;; second route
              [[:users :stop]
@@ -85,10 +91,6 @@
              ;; third route
              [[:current-user :stop]
               [:current-user :start]
-              ;; I would expect this to be earlier in the log,
-              ;; but it seems that because of the core.async timing
-              ;; it ends up here. Doesn't matter though, it's important
-              ;; that the command was called.
               [:users :command :stop]
               [:session :command :route-changed]]]
         get-log (fn [indices]
@@ -96,18 +98,27 @@
                                        (get log i)) indices)))]
     (async done
            (go
-             (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers (fn [_ _ _ _ _ _ _])))
-             (>! route-chan {:page "users"})
-             (<! (animation-frame 2))
+             (reset! app-instance (controller-manager/start route-chan commands-chan app-db controllers (fn [& args])))
              (is (= (get-log [0]) (:log @app-db)))
-             (>! route-chan {:page "current-user" :user-id 1})
-             (<! (animation-frame 2))
+             (<! (timeout 20))
              (is (= (get-log (range 2)) (:log @app-db)))
-             (>! commands-chan [[:session :test-command] "some argument"])
-             (<! (animation-frame 2))
+
+             (>! route-chan {:page "users"})
+             (<! (timeout 20))
              (is (= (get-log (range 3)) (:log @app-db)))
-             (>! route-chan {:page "current-user" :user-id 2})
-             (<! (animation-frame 2))
+
+             (>! route-chan {:page "current-user" :user-id 1})
+             (<! (timeout 20))
              (is (= (get-log (range 4)) (:log @app-db)))
+
+             (>! commands-chan [[:session :test-command] "some argument"])
+             (<! (timeout 20))
+             (is (= (get-log (range 5)) (:log @app-db)))
+
+
+             (>! route-chan {:page "current-user" :user-id 2})
+             (<! (timeout 20))
+             (is (= (get-log (range 6)) (:log @app-db)))
+
              ((:stop @app-instance))
              (done)))))

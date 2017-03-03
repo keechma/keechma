@@ -48,7 +48,6 @@
       (add-watch route-atom watch-id
                  (fn [_ _ _ route-data]
                    (put! routes-chan route-data)))
-      (put! routes-chan @route-atom)
       (swap! app-db assoc :route @route-atom)
       this))
   (stop! [this]

@@ -106,7 +106,6 @@
     (let [handler (fn [href]
                     (put! routes-chan (router/url->map routes (route-url href base-href))))]
       ((:bind urlchange-dispatcher) handler)
-      (handler (.-href js/location))
       (swap! app-db assoc :route (router/url->map routes (route-url (.-href js/location) base-href)))
       (assoc this :urlchange-handler handler)))
   (stop! [this]

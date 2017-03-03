@@ -25,7 +25,6 @@
           current-route-params (router/url->map (:routes this) (subs (.. js/window -location -hash) 2))]
       (events/listen history EventType/NAVIGATE (:hashchange-listener this))
       (doto history (.setEnabled true))
-      (put! (:routes-chan this) current-route-params)
       (swap! app-db assoc :route current-route-params)
       (assoc this :history history)))
   (stop! [this]
