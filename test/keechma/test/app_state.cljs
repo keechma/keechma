@@ -8,7 +8,8 @@
             [keechma.controller :as controller]
             [keechma.ui-component :as ui]
             [keechma.app-state.react-native-router :as rn-router]
-            [keechma.app-state.history-router :as history-router])
+            [keechma.app-state.history-router :as history-router]
+            [keechma.ssr :as ssr])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -850,3 +851,37 @@
              (app-state/stop! app)
              (unmount)
              (done)))))
+
+(defn ssr-to-chan [app-definition route]
+  (let [res-chan (chan)]
+    (ssr/render app-definition route (fn [res] (put! res-chan res)))
+    res-chan))
+
+(deftest basic-ssr
+  (let [[c unmount] (make-container)
+         current-href (.-href js/location)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :history
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:a {:href (ui/url ctx {:page "page-name2" :foo "Bar"})}
+                                               [:span.link-el "Link"]])}}}]
+    (async done
+           (go
+             (let [{:keys [html]} (<! (ssr-to-chan app-definition ""))]
+               (set! (.-innerHTML c) html)
+               (is (= "Link" (.-innerText c)))
+               (let [app (app-state/start! app-definition)]
+                 (<! (timeout 20))
+                 (is (= "Link" (.-innerText c)))
+                 (sim/click (sel1 c [:.link-el]) {:button 0})
+                 (<! (timeout 20))
+                 (is (= (get-in @(:app-db app) [:route :data])
+                        {:foo "Bar"
+                         :page "page-name2"}))
+                 (app-state/stop! app)
+                 (unmount)
+                 (.pushState js/history nil "", current-href)
+                 (done)))))))

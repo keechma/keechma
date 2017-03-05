@@ -2,7 +2,7 @@
   (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.util :refer [dissoc-in]]
             [keechma.controller :as controller])
-  (:require-macros [cljs.core.async.macros :as m :refer [go]]))
+  (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
 (defn ^:private send-command-to [reporter controller command-name args] 
   (reporter :controller :in (:name controller) command-name args :info)
@@ -90,6 +90,49 @@
     (call-handler-on-started-controllers app-db-atom reporter start)
     (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params)))
 
+(defn call-ssr-handler-on-started-controllers [app-db-atom reporter start ssr-handler-done-cb]
+  (let [wait-chan (chan)
+        wait-count (loop [wait-count 0
+                          start start]
+                     (if-let [s (first start)]
+                       (let [[topic _] s
+                             controller (get-in @app-db-atom [:internal :running-controllers topic])]
+                         (reporter :app :out :controller [topic :ssr-handler] nil :info)
+                         (let [ret-val (controller/ssr-handler
+                                        controller
+                                        app-db-atom
+                                        #(put! wait-chan true)
+                                        (:in-chan controller)
+                                        (:out-chan controller))]
+                           (if (= controller/not-implemented ret-val)
+                             (recur wait-count (rest start))
+                             (recur (inc wait-count) (rest start)))))
+                       wait-count))]
+    (go-loop [wait-count wait-count]
+      (if (= 0 wait-count)
+        (ssr-handler-done-cb)
+        (let [msg (<! wait-chan)]
+          (when msg
+            (recur (dec wait-count))))))))
+
+(defn start-ssr [routes-chan commands-chan app-db-atom controllers reporter done-cb]
+  (let [app-db @app-db-atom
+        route-params (:route app-db)
+        execution-plan (route-change-execution-plan route-params {} controllers)
+        {:keys [start]} execution-plan
+        get-running (fn [topic] (get-in @app-db-atom [:internal :running-controllers topic]))
+        ssr-handler-done-cb (fn []
+                              (close! commands-chan)
+                              (done-cb))]
+    (reset! (apply-start-controllers app-db-atom reporter controllers commands-chan get-running start))
+    (go-loop []
+      (when-let [command (<! commands-chan)]
+        (let [[command-name command-args] command
+              running-controllers (get-in @app-db-atom [:internal :running-controllers])]
+          (route-command-to-controller reporter running-controllers command-name command-args)
+          (recur))))
+    (call-ssr-handler-on-started-controllers app-db-atom reporter start ssr-handler-done-cb)))
+
 (defn start
   "Starts the controller manager. Controller manager is the central part
   of the application that manages the lifecycle of the controllers and routes
@@ -125,28 +168,26 @@
   (let [stop-route-block (chan)
         stop-command-block (chan)
         running-chans
-        [(go
-           (loop []
-             ;; When route changes:
+        [(go-loop []
+            ;; When route changes:
              ;;   - stop controllers that return nil from their params functions
              ;;   - start controllers that need to be started
              ;;   - restart controllers that were running with the different params (stop the old instance and start the new one)
-             ;;   - send "route-changed" command to controllers that were already running
-             (let [[val channel] (alts! [stop-route-block route-chan])]
-               (when (and (not= channel stop-route-block) val)
-                 (let [route-params val]
-                   (when (not= route-params (:route @app-db-atom))
-                     (apply-route-change reporter route-params app-db-atom commands-chan controllers))
-                   (recur))))))
-         (go
-           (loop []
-             (let [[val channel] (alts! [stop-command-block commands-chan])]
-               (when-not (= channel stop-command-block)
-                 (let [[command-name command-args] val 
-                       running-controllers (get-in @app-db-atom [:internal :running-controllers])]
-                   (when (not (nil? command-name))
-                     (route-command-to-controller reporter running-controllers command-name command-args))
-                   (recur))))))]]
+             ;;   - send "route-changed" command to controllers that were already running 
+           (let [[val channel] (alts! [stop-route-block route-chan])]
+             (when (and (not= channel stop-route-block) val)
+               (let [route-params val]
+                 (when (not= route-params (:route @app-db-atom))
+                   (apply-route-change reporter route-params app-db-atom commands-chan controllers))
+                 (recur)))))
+         (go-loop []
+           (let [[val channel] (alts! [stop-command-block commands-chan])]
+             (when-not (= channel stop-command-block)
+               (let [[command-name command-args] val 
+                     running-controllers (get-in @app-db-atom [:internal :running-controllers])]
+                 (when (not (nil? command-name))
+                   (route-command-to-controller reporter running-controllers command-name command-args))
+                 (recur)))))]]
     {:running-chans running-chans
      :stop (fn []
              (reporter :app :in nil :stop nil :info)

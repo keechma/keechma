@@ -41,10 +41,10 @@
     (go
       (loop []
         (let [[command args] (<! in-chan)]
-          (println "COMMAND" command)
           (when command
             (reset! app-db (add-to-log @app-db [:users :command command]))
             (when (= :stop command)
+              ;; Channel should be closed before this can be put on it
               (put! in-chan [:this-should-be :ignored]))
             (recur))))))
   (stop [this params state]
