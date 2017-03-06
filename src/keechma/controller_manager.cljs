@@ -50,10 +50,10 @@
           (recur (rest stop) new-app-db))
         app-db))))
 
-(defn apply-start-controllers [app-db reporter controllers commands-chan get-running start]
-  (loop [start start
+(defn apply-start-or-wake-controllers [action app-db reporter controllers commands-chan get-running start-or-wake]
+  (loop [start-or-wake start-or-wake
          app-db app-db]
-      (if-let [s (first start)]
+      (if-let [s (first start-or-wake)]
         (let [[topic params] s
               controller (assoc (get controllers topic)
                                 :in-chan (chan)
@@ -63,30 +63,14 @@
                                 :name topic
                                 :reporter reporter
                                 :running (partial get-running topic))
-              new-app-db (-> (controller/start controller params app-db)
+              new-app-db (-> (action controller params app-db)
                              (assoc-in [:internal :running-controllers topic] controller))]
-          (reporter :app :out :controller [topic :start] params :info)
-          (recur (rest start) new-app-db))
+          (reporter :app :out :controller [topic :start-or-wake] params :info)
+          (recur (rest start-or-wake) new-app-db))
         app-db)))
 
-(defn apply-wake-controllers [app-db reporter controllers commands-chan get-running wake]
-  (loop [wake wake
-         app-db app-db]
-      (if-let [s (first wake)]
-        (let [[topic params] s
-              controller (assoc (get controllers topic)
-                                :in-chan (chan)
-                                :out-chan commands-chan
-                                :params params
-                                :route-params (:route app-db)
-                                :name topic
-                                :reporter reporter
-                                :running (partial get-running topic))
-              new-app-db (-> (controller/wake controller params app-db)
-                             (assoc-in [:internal :running-controllers topic] controller))]
-          (reporter :app :out :controller [topic :wake] params :info)
-          (recur (rest wake) new-app-db))
-        app-db)))
+(def apply-start-controllers (partial apply-start-or-wake-controllers controller/start))
+(def apply-wake-controllers (partial apply-start-or-wake-controllers controller/wake))
 
 (defn call-handler-on-started-controllers [app-db-atom reporter start]
   (doseq [[topic _] start]
