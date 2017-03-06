@@ -10,14 +10,10 @@
   (let [routes (:routes state) 
         routes-chan (:routes-chan state)
         router (ssr-router/constructor current-url routes routes-chan state)]
-    (-> state
-        (assoc :router router)
-        (app-state/add-stop-fn (fn [s]
-                                 (app-state-core/stop! router)
-                                 s)))))
+    (assoc state :router router)))
 
 (defn prepare-config [config url]
-  (let [config (app-state/process-config (merge (app-state/default-config {}) config))]
+  (let [config (app-state/map->AppState (app-state/process-config (merge (app-state/default-config {}) config)))]
     (-> config
         (app-state/start-subs-cache)
         (start-router! url))))
@@ -39,12 +35,15 @@
   (let [app-renderer (app-state/app-renderer state)]
     (r-server/render-to-string app-renderer)))
 
-(defn controllers-done [done-cb state]
+(defn controllers-done [done-cb transit-writers state]
   (let [html (-> state
                  (app-state/resolve-main-component)
                  (render-to-string))]
-    (done-cb {:html html})))
+    (done-cb {:html html
+              :app-state (app-state/serialize-app-state transit-writers state)})))
 
-(defn render [config url done-cb]
-  (let [config (prepare-config config url)]
-    (start-controllers config (partial controllers-done done-cb))))
+(defn render
+  ([config url done-cb] (render config url {} done-cb))
+  ([config url transit-writers done-cb]
+   (let [config (prepare-config config url)]
+     (start-controllers config (partial controllers-done done-cb transit-writers)))))

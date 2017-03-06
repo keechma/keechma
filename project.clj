@@ -14,7 +14,8 @@
                  [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]
                  [keechma/router "0.1.0"]
-                 [keechma/entitydb "0.1.0"]]
+                 [keechma/entitydb "0.1.0"]
+                 [com.cognitect/transit-cljs "0.8.239"]]
 
   :plugins [[lein-cljsbuild "1.1.5"]
             [lein-figwheel "0.5.8"]

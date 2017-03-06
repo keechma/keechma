@@ -34,8 +34,11 @@
   (params [_ _] true)
   ;; When the controller is started, start the inner app and save
   ;; it's definition inside the app-db
-  (start [this params app-db] 
-    (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
+  (start [this params app-db]
+    (assoc app-db :inner-app (app-state/start! inner-app false)))
+  (wake [this params app-db]
+    (let [serialized-app (:inner-app app-db)]
+      (assoc app-db :inner-app (app-state/start! (assoc inner-app :initial-data serialized-app) false))))
   ;; When the controller is stopped, stop the inner app
   (stop [this params app-db]
     (app-state/stop! (:inner-app app-db))
@@ -870,7 +873,7 @@
                                                [:span.link-el "Link"]])}}}]
     (async done
            (go
-             (let [{:keys [html]} (<! (ssr-to-chan app-definition ""))]
+             (let [{:keys [html app-state]} (<! (ssr-to-chan app-definition ""))]
                (set! (.-innerHTML c) html)
                (is (= "Link" (.-innerText c)))
                (let [app (app-state/start! app-definition)]
@@ -884,4 +887,87 @@
                  (app-state/stop! app)
                  (unmount)
                  (.pushState js/history nil "", current-href)
+                 (done)))))))
+
+(deftest multiple-apps-ssr []
+  (let [[c unmount] (make-container)
+        ;; definition of the inner app
+        inner-app
+        {:components {:main {:renderer (fn [_] [:div "INNER APP"])}}} 
+        ;; renderer function of the main app
+        ;; it gets the inner app's main component from the app
+        ;; state and renders it
+        outer-app-renderer 
+        (fn [ctx]
+          (let [inner-app-sub (ui/subscription ctx :inner-app)]
+            (fn []
+              (let [inner-app (:main-component @inner-app-sub)]
+                [(or inner-app :div)]))))
+        ;; get the inner app from the app-db
+        inner-app-sub
+        (fn [app-db]
+          (reaction
+           (:inner-app @app-db)))
+        ;; definition of the outer app
+        outer-app {:controllers {:main (->AppStartController inner-app)}
+                   :html-element c
+                   :router :history
+                   :components {:main {:renderer outer-app-renderer
+                                       :subscription-deps [:inner-app]}}
+                   :subscriptions {:inner-app inner-app-sub}}]
+    (async done
+           (go
+             (let [{:keys [html app-state]} (<! (ssr-to-chan outer-app ""))]
+               (set! (.-innerHTML c) html)
+               (is (= "INNER APP" (.-innerText c)))
+               (let [app-config (assoc outer-app :initial-data (app-state/deserialize-app-state {} app-state))
+                     app (app-state/start! app-config)]
+                 (is (= "INNER APP" (.-innerText c)))
+                 (done)))))))
+
+(defrecord AsyncSsrHandlerController [log]
+  controller/IController
+  (params [this route-params] true)
+  (start [this params app-db]
+    (swap! log conj :start)
+    app-db)
+  (wake [this params app-db]
+    (swap! log conj :wake)
+    app-db)
+  (handler [this app-db-atom _ _]
+    (swap! log conj :handler))
+  (ssr-handler [this app-db-atom done _ _]
+    (swap! log conj :ssr-handler-start)
+    (js/setTimeout (fn []
+                     (swap! app-db-atom assoc-in [:kv :message] "Hello World!")
+                     (swap! log conj :ssr-handler-done)
+                     (done)) 30)))
+
+(deftest async-handler-ssr []
+  (let [[c unmount] (make-container)
+        log (atom [])
+        app-renderer
+        (fn [ctx]
+          [:div @(ui/subscription ctx :message)])
+        ;; get the inner app from the app-db
+        message-sub
+        (fn [app-db]
+          (reaction
+           (get-in @app-db [:kv :message])))
+        ;; definition of the outer app
+        outer-app {:controllers {:main (->AsyncSsrHandlerController log)}
+                   :html-element c
+                   :router :history
+                   :components {:main {:renderer app-renderer
+                                       :subscription-deps [:message]}}
+                   :subscriptions {:message message-sub}}]
+    (async done
+           (go
+             (let [{:keys [html app-state]} (<! (ssr-to-chan outer-app ""))]
+               (set! (.-innerHTML c) html)
+               (is (= "Hello World!" (.-innerText c)))
+               (let [app-config (assoc outer-app :initial-data (app-state/deserialize-app-state {} app-state))
+                     app (app-state/start! app-config)]
+                 (is (= "Hello World!" (.-innerText c)))
+                 (is (= [:start :ssr-handler-start :ssr-handler-done :wake :handler] @log))
                  (done)))))))

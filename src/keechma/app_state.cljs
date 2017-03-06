@@ -3,12 +3,89 @@
             [cljs.core.async :refer [put! close! chan timeout <!]]
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager]
+            [keechma.controller :as controller]
             [keechma.app-state.core :as app-state-core]
             [keechma.app-state.hashchange-router :as hashchange-router]
             [keechma.app-state.react-native-router :as react-native-router]
-            [keechma.app-state.history-router :as history-router])
+            [keechma.app-state.history-router :as history-router]
+            [cognitect.transit :as t])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
+
+(defrecord AppState
+    [name
+     reporter
+     router
+     routes-chan
+     commands-chan
+     app-db
+     subscriptions-cache
+     components
+     controllers
+     context
+     html-element
+     stop-fns])
+
+(defrecord SerializedAppState [app-db])
+
+(defn get-controller-types-set [app-state]
+  (set (map type (vals (:controllers app-state)))))
+
+(defn prepare-for-serialization
+  ([value] (prepare-for-serialization value (set {})))
+  ([value controller-types]
+   (cond
+     (= AppState (type value))
+     (->SerializedAppState (prepare-for-serialization @(:app-db value) (get-controller-types-set value)))
+
+     (satisfies? IDeref value)
+     (prepare-for-serialization (deref value) controller-types)
+
+     (contains? controller-types (type value))
+     (controller/->SerializedController (:params value))
+
+     (or (= SerializedAppState (type value))
+         (= controller/SerializedController (type value)))
+     value
+
+     (map? value)
+     (reduce (fn [acc [k v]]
+               (assoc acc k (prepare-for-serialization v controller-types))) {} value)
+     (vector? value)
+     (map #(prepare-for-serialization % controller-types) value)
+
+     :else value)))
+
+(deftype ControllerWriteHandler []
+  Object
+  (tag [this v] "controller")
+  (rep [this v] #js {:params (:params v)})
+  (stringRep [this v] nil))
+
+(deftype AppStateWriteHandler []
+  Object
+  (tag [this v] "app-state")
+  (rep [this v]
+    #js {:appdb (:app-db v)})
+  (stringRep [this v] nil))
+
+(defn serialize-app-state [transit-writers state]
+  (let [running-controllers (get-in @(:app-db state) [:internal :running-controllers])
+        handlers (assoc transit-writers
+                        SerializedAppState (AppStateWriteHandler.)
+                        controller/SerializedController (ControllerWriteHandler.))
+        writer (t/writer :json
+                         {:handlers handlers})
+        prepared-state (prepare-for-serialization state)]
+    (t/write writer prepared-state)))
+
+(defn deserialize-app-state [transit-readers serialized-state]
+  (let [handlers (assoc transit-readers
+                        "controller" (fn [data] (controller/->SerializedController (get data "params")))
+                        "app-state" (fn [data] (->SerializedAppState (get data "appdb"))))
+        reader (t/reader :json
+                         {:handlers handlers})]
+    (t/read reader serialized-state)))
 
 (defn ^:private app-db [initial-data]
   (reagent/atom (merge {:route {}
@@ -144,6 +221,13 @@
                        (dissoc :internal)
                        (dissoc :route))))))
 
+(defn get-initial-data [config]
+  (let [initial-data (:initial-data config)]
+    (cond
+      (= SerializedAppState (type initial-data)) (:app-db initial-data)
+      (nil? initial-data) {}
+      :else initial-data)))
+
 (defn start!
   "Starts the application. It receives the application config `map` as the first argument.
   It receives `boolean` `should-mount?` as the second element. Default value for `should-mount?`
@@ -189,16 +273,15 @@
   "
   ([config] (start! config true))
   ([config should-mount?]
-   (let [initial-data (or (:init-data config) {})
-         config (process-config (merge (default-config initial-data) config))
+   (let [initial-data (get-initial-data config)
+         config (map->AppState (process-config (merge (default-config initial-data) config)))
          mount (if should-mount? mount-to-element! identity)]
      (-> config
          (start-subs-cache)
          (start-router!)
          (start-controllers)
          (resolve-main-component)
-         (mount)
-         (with-meta {::app-state true})))))
+         (mount)))))
 
 (defn stop!
   "Stops the application. `stop!` function receives the following as the arguments:
@@ -225,4 +308,3 @@
        (close! commands-chan)
        (close! routes-chan)
        (done)))))
-

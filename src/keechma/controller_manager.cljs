@@ -1,7 +1,7 @@
 (ns keechma.controller-manager
   (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.util :refer [dissoc-in]]
-            [keechma.controller :as controller])
+            [keechma.controller :as controller :refer [SerializedController]])
   (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
 (defn ^:private send-command-to [reporter controller command-name args] 
@@ -25,8 +25,10 @@
     (reduce (fn [acc [topic controller]]
               (let [{:keys [stop start wake route-changed]} acc
                     new-params (controller/params controller route-params)
-                    prev-params (get-in running-controllers [topic :params])]
+                    running-controller (get running-controllers topic)
+                    prev-params (:params running-controller)]
                 (cond
+                  (= SerializedController (type running-controller)) (assoc acc :wake (assoc wake topic new-params))
                   (and (nil? prev-params) (nil? new-params))     acc
                   (and (nil? prev-params) (boolean new-params)) (assoc acc :start (assoc start topic new-params))
                   (and (boolean prev-params) (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
@@ -67,6 +69,25 @@
           (recur (rest start) new-app-db))
         app-db)))
 
+(defn apply-wake-controllers [app-db reporter controllers commands-chan get-running wake]
+  (loop [wake wake
+         app-db app-db]
+      (if-let [s (first wake)]
+        (let [[topic params] s
+              controller (assoc (get controllers topic)
+                                :in-chan (chan)
+                                :out-chan commands-chan
+                                :params params
+                                :route-params (:route app-db)
+                                :name topic
+                                :reporter reporter
+                                :running (partial get-running topic))
+              new-app-db (-> (controller/wake controller params app-db)
+                             (assoc-in [:internal :running-controllers topic] controller))]
+          (reporter :app :out :controller [topic :wake] params :info)
+          (recur (rest wake) new-app-db))
+        app-db)))
+
 (defn call-handler-on-started-controllers [app-db-atom reporter start]
   (doseq [[topic _] start]
     (let [controller (get-in @app-db-atom [:internal :running-controllers topic])]
@@ -86,8 +107,9 @@
     (reset! app-db-atom
             (-> (assoc app-db :route route-params)
                 (apply-stop-controllers reporter stop)
-                (apply-start-controllers reporter controllers commands-chan get-running start)))
-    (call-handler-on-started-controllers app-db-atom reporter start)
+                (apply-start-controllers reporter controllers commands-chan get-running start)
+                (apply-wake-controllers reporter controllers commands-chan get-running wake)))
+    (call-handler-on-started-controllers app-db-atom reporter (concat start wake))
     (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params)))
 
 (defn call-ssr-handler-on-started-controllers [app-db-atom reporter start ssr-handler-done-cb]
@@ -124,7 +146,7 @@
         ssr-handler-done-cb (fn []
                               (close! commands-chan)
                               (done-cb))]
-    (reset! (apply-start-controllers app-db-atom reporter controllers commands-chan get-running start))
+    (reset! app-db-atom (apply-start-controllers app-db reporter controllers commands-chan get-running start))
     (go-loop []
       (when-let [command (<! commands-chan)]
         (let [[command-name command-args] command

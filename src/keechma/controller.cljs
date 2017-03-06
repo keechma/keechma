@@ -155,3 +155,5 @@
               action-fn (get actions command)]
           (when action-fn (action-fn app-db-atom args))
           (when command (recur))))))
+
+(defrecord SerializedController [params])
