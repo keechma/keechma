@@ -67,10 +67,11 @@
           subscriptions (reduce-kv (fn [s k v]
                                      (assoc s k (partial v (:app-db this))))
                                    {} (:subscriptions this))]
-      (partial (:renderer this)
-               (-> this
-                   (assoc :subscriptions subscriptions)
-                   (assoc :components child-renderers))))))
+      (with-meta (partial (:renderer this)
+                          (-> this
+                              (assoc :subscriptions subscriptions)
+                              (assoc :components child-renderers)))
+        {:name (:name this)}))))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)

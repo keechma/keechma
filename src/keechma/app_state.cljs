@@ -165,13 +165,15 @@
                (resolved)))))
 
 (defn app-renderer [state]
-  [(fn []
-      (let [main-component (:main-component state)
-            router (:router state)
-            route-wrap-component (app-state-core/wrap-component router)]
-        (if route-wrap-component
-          [route-wrap-component [main-component]]
-          [main-component])))])
+  [(with-meta
+     (fn []
+       (let [main-component (:main-component state)
+             router (:router state)
+             route-wrap-component (app-state-core/wrap-component router)]
+         (if route-wrap-component
+           [(with-meta route-wrap-component {:name :router-wrap}) [main-component]]
+           [main-component])))
+     {:name (str (flatten (:name state)))})])
 
 (defn ^:private mount-to-element! [state]
   (let [main-component (:main-component state) 
