@@ -16,6 +16,10 @@
       (send-command-to reporter controller command-name command-args)
       (throw (ex-info "Trying to send command to a controller that is not running" {:controller controller-name :command command-name :args command-args})))))
 
+(defn report-running-controllers [app-db-atom]
+  (let [running-controllers (get-in @app-db-atom [:internal :running-controllers])]
+    (reduce (fn [acc [k v]] (assoc acc k (:params v))) {} running-controllers)))
+
 (defn route-change-execution-plan [route-params running-controllers controllers]
   (let [plan {:stop          {}
               :start         {}
@@ -50,7 +54,8 @@
           (recur (rest stop) new-app-db))
         app-db))))
 
-(defn apply-start-or-wake-controllers [action app-db reporter controllers commands-chan get-running start-or-wake]
+(defn apply-start-or-wake-controllers
+  [action reporter-action app-db reporter controllers commands-chan get-running start-or-wake]
   (loop [start-or-wake start-or-wake
          app-db app-db]
       (if-let [s (first start-or-wake)]
@@ -65,12 +70,12 @@
                                 :running (partial get-running topic))
               new-app-db (-> (action controller params app-db)
                              (assoc-in [:internal :running-controllers topic] controller))]
-          (reporter :app :out :controller [topic :start-or-wake] params :info)
+          (reporter :app :out :controller [topic reporter-action] params :info)
           (recur (rest start-or-wake) new-app-db))
         app-db)))
 
-(def apply-start-controllers (partial apply-start-or-wake-controllers controller/start))
-(def apply-wake-controllers (partial apply-start-or-wake-controllers controller/wake))
+(def apply-start-controllers (partial apply-start-or-wake-controllers controller/start :start))
+(def apply-wake-controllers (partial apply-start-or-wake-controllers controller/wake :wake))
 
 (defn call-handler-on-started-controllers [app-db-atom reporter start]
   (doseq [[topic _] start]
@@ -84,6 +89,7 @@
       (send-command-to reporter controller :route-changed route-params))))
 
 (defn apply-route-change [reporter route-params app-db-atom commands-chan controllers]
+  (reporter :router :out nil :route-changed route-params :info)
   (let [app-db @app-db-atom
         execution-plan (route-change-execution-plan route-params (get-in app-db [:internal :running-controllers]) controllers)
         {:keys [stop start wake route-changed]} execution-plan
@@ -94,7 +100,8 @@
                 (apply-start-controllers reporter controllers commands-chan get-running start)
                 (apply-wake-controllers reporter controllers commands-chan get-running wake)))
     (call-handler-on-started-controllers app-db-atom reporter (concat start wake))
-    (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params)))
+    (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params))
+  (reporter :app :in nil :running-controllers (report-running-controllers app-db-atom) :info))
 
 (defn call-ssr-handler-on-started-controllers [app-db-atom reporter start ssr-handler-done-cb]
   (let [wait-chan (chan)
