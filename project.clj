@@ -1,4 +1,4 @@
-(defproject keechma/keechma "0.2.0-SNAPSHOT-10"
+(defproject keechma/keechma "0.2.0-SNAPSHOT-11"
   :description "Frontend micro framework for ClojureScript and Reagent"
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
@@ -29,10 +29,10 @@
           :namespaces [keechma.app-state keechma.controller keechma.controller-manager keechma.ui-component]}
 
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
-  
+
   :cljsbuild {:builds
               [{:id "dev"
-                :source-paths ["src"] 
+                :source-paths ["src"]
 
                 :compiler {:main keechma.core
                            :asset-path "js/compiled/out"
