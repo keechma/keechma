@@ -45,13 +45,14 @@
     (loop [stop stop
            app-db app-db]
       (if-let [s (first stop)]
-        (let [[topic params] s
-              controller (get running-controllers topic)
-              new-app-db (-> (controller/stop controller (:params controller) app-db)
-                             (dissoc-in [:internal :running-controllers topic]))]
-          (reporter :app :out :controller [topic :stop] nil :info)
-          (close! (:in-chan controller))
-          (recur (rest stop) new-app-db))
+        (let [[topic params] s]
+          (reporter :app :out :controller [topic :stop] params :info)
+          (reporter :controller :in topic [:lifecycle :stop] params :info)
+          (let [controller (get running-controllers topic)
+                new-app-db (-> (controller/stop controller (:params controller) app-db)
+                               (dissoc-in [:internal :running-controllers topic]))]
+            (close! (:in-chan controller))
+            (recur (rest stop) new-app-db)))
         app-db))))
 
 (defn apply-start-or-wake-controllers
@@ -59,19 +60,20 @@
   (loop [start-or-wake start-or-wake
          app-db app-db]
       (if-let [s (first start-or-wake)]
-        (let [[topic params] s
-              controller (assoc (get controllers topic)
-                                :in-chan (chan)
-                                :out-chan commands-chan
-                                :params params
-                                :route-params (:route app-db)
-                                :name topic
-                                :reporter reporter
-                                :running (partial get-running topic))
-              new-app-db (-> (action controller params app-db)
-                             (assoc-in [:internal :running-controllers topic] controller))]
+        (let [[topic params] s]
           (reporter :app :out :controller [topic reporter-action] params :info)
-          (recur (rest start-or-wake) new-app-db))
+          (reporter :controller :in topic [:lifecycle reporter-action] params :info)
+          (let [controller (assoc (get controllers topic)
+                                  :in-chan (chan)
+                                  :out-chan commands-chan
+                                  :params params
+                                  :route-params (:route app-db)
+                                  :name topic
+                                  :reporter reporter
+                                  :running (partial get-running topic))
+                new-app-db (-> (action controller params app-db)
+                               (assoc-in [:internal :running-controllers topic] controller))]
+            (recur (rest start-or-wake) new-app-db)))
         app-db)))
 
 (def apply-start-controllers (partial apply-start-or-wake-controllers controller/start :start))
@@ -81,6 +83,7 @@
   (doseq [[topic _] start]
     (let [controller (get-in @app-db-atom [:internal :running-controllers topic])]
       (reporter :app :out :controller [topic :handler] nil :info)
+      (reporter :controller :in topic [:lifecycle :handler] nil :info)
       (controller/handler controller app-db-atom (:in-chan controller) (:out-chan controller)))))
 
 (defn send-route-changed-to-surviving-controllers [app-db-atom reporter route-changed route-params]
@@ -176,7 +179,7 @@
   "
 
   [route-chan commands-chan app-db-atom controllers reporter]
-  (reporter :app :in nil :start nil :info)
+  (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) :info)
   (apply-route-change reporter (:route @app-db-atom) app-db-atom commands-chan controllers)
   (let [stop-route-block (chan)
         stop-command-block (chan)
