@@ -116,5 +116,5 @@ When you define the application config map (which will be used to start and stop
 
 Controllers can only receive commands if they are currently running. Otherwise, the command will be dropped.
 
-Read the API docs for the [Controller Manager](api/keechma.controller-manager.html) and for the [Controllers](api/keechma.controller.html).
+Here are the API docs for the [Controller Manager](api/keechma.controller-manager.html) and for the [Controllers](api/keechma.controller.html).
 
