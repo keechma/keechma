@@ -8,7 +8,7 @@ Controllers in Keechma react to route changes and implement any code that has si
 
 Anything that produces a side effect is implemented in a controller. **Controllers are the only place in the application where you have access to the application's state atom.**
 
-For each URL you can have multiple controllers running at once. Each controller managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsobilites.
+For each URL you can have multiple controllers running at once. Each controller managing a substate of the application. This way you can split the application logic in small pieces, with clearly defined responsibilites.
 
 ## How controllers work
 
