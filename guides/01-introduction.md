@@ -53,5 +53,5 @@ The libraries that had the biggest impact on Keechma:
 - [CanJS](http://canjs.com) - Keechma's router is ported from CanJS and EntityDB is inspired by the CanJS model store
 - [Re/Frame](https://github.com/Day8/re-frame). - One-big-atom store, subscriptions and handlers are based of my experience with Re/Frame
 - [Reagent](https://github.com/reagent-project/reagent) - Keechma would be much harder to implement without Reagent's approach to components
-- [Om](https://github.com/omcljs/om) - Without Om I probably wouldn't try ClojureScript, so Keechma wouldn't exist.
+- [Om](https://github.com/omcljs/om) - Without Om I probably wouldn't have tried ClojureScript — and Keechma wouldn't exist.
 
