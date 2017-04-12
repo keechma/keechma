@@ -70,8 +70,7 @@ When the user is on the `/starred` page the `NoteDetails` controller will not be
 
 When using the controllers to manage the application state mutations you can ensure the following:
 
-1. State changes will be deterministic.
-    - Based on the route, you know which controllers are running on the page.
+1. State changes will be deterministic. Based on the route, you know which controllers are running on the page.
 2. Data is loaded at the right time, when the controller is started.
 3. Domain logic is split into small, bite-sized parts, each controller implements only the subset of the page logic.
 
