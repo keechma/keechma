@@ -74,17 +74,17 @@ When using the controllers to manage the application state mutations you can ens
 2. Data is loaded at the right time, when the controller is started.
 3. Domain logic is split into small, bite-sized parts, each controller implements only the subset of the page logic.
 
-**Controllers in Keechma are future proof**, if the UI layout changed, and the note details page doesn't show the list of notes anymore, the only thing that you would need to update is the `NoteList` controller's `params` function, everything else would remain the same.
+**Controllers in Keechma are future proof**. If the UI layout changed and the note details page doesn't show the list of notes anymore, the only thing that you would need to update is the `NoteList` controller's `params` function; everything else would remain the same.
 
-If React allows you to reason about your app like you're re-rendering everything every time something changes, **Keechma controllers' goal is to allow you to reason about your app like you're reloading everything every time the URL changes**.
+If React allows you to reason about your app like you're re-rendering everything every time something changes, **Keechma's controllers allow you to reason about your app like you're reloading everything every time the URL changes**.
 
-## Handling the user actions
+## Handling user actions
 
-Besides data loading, controllers have another task. They react to user commands.
+Besides data loading, controllers have another task: they react to user commands.
 
-Whenever the user performs an action - clicks on a button or submits a form, that action is sent to the Controller Manager. Based on the `:topic` this action will be routed to the appropriate controller.
+Whenever the user performs an action - clicks on a button or submits a form - that action is sent to the Controller Manager. Based on the `:topic`, this action will be routed to the appropriate controller.
 
-Each controller can implement the `handler` function. That function receives the `in-chan` as an argument. User commands will be placed on that channel, and the controller can take from the channel and react to the command.
+Each controller can implement the `handler` function which receives the `in-chan` as an argument. User commands will be placed on that channel and the controller reacts accordingly.
 
 ```clojure
 (defrecord UserController []
