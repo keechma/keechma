@@ -137,5 +137,5 @@ When you manually resolve dependencies, all unresolved dependencies will still b
 
 The UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside.
 
-Read the UI system [API docs](api/keechma.ui-component.html).
+Here are the UI system [API docs](api/keechma.ui-component.html).
 
