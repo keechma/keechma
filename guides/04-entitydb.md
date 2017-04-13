@@ -1,36 +1,21 @@
 # EntityDB
 
-EntityDB is a library that handles storage of any kind of entities in your application. An entity is anything that is "identifiable". Usually, the `id` attribute is used, but you can use anything that makes sense for your application.
+The big idea behind EntityDB is consistency. It ensures that there is only one instance of each entity in your application. This enables you to write simpler code and avoid a whole class of bugs related to data synchronization. Gone too is the requirement to model your application state in a quickly-unmanageable tree. EntityDB provides:
 
-## Why do you need EntityDB?
-
-EntityDB solves two problems for you:
-
-1. It allows you to store all entities in a central location
-2. It ensures data consistency
-    - If you have the same entity rendered in multiple places (for instance in a master - detail layout) - changes to entity in one place will update the other
-    - If you have an entity inside some collection, removing it from the EntityDB store will remove it from the collection too
+1. **Data Consistency** — collections of entities are kept up-to-date: remove an entity from EntityDB and it is removed from any collections that contain it
+2. **Rendering Consistency** — any change to an entity is reflected everywhere it is rendered (e.g. a master-detail layout)
+3. **Simplicity** — all entities are in a central location
 
 ## How does it work?
 
-EntityDB functions are implemented in a purely functional way, and they operate on the Clojure `map`.
+Implemented as a separate library, EntityDB tracks all of your application's entities. An entity is anything that is "identifiable". While the `:id` attribute is normally used for this purpose, your application can identify entities in whatever way makes sense.
 
-EntityDB supports two ways to store items:
+Operating on a Clojure `map`, access to EntityDB is purely functional and supports two types of structures:
 
-1. In collections
-2. In named item slots
+1. **Collections** — lists of entities stored and retrieved by the collection's name
+2. **Named entity slots** — individual named entities 
 
-### Collections
-
-Collections are just named lists of items. Whenever you store or retrieve a collection you use the collection's name.
-
-### Named items
-
-Similar to collections, but they reference just one item.
-
-#### Why do you need to use named collections and named items?
-
-Since ClojureScript data structures are immutable, holding a reference to a list of items (or item) will always give you the same value. By using names, EntityDB can internally update named items and collections when the data changes and ensure data consistency.
+Since ClojureScript data structures are immutable, holding a reference to a list of entities (or an entity) will always give you the same value. By using names, EntityDB can internally update named entities and collections when the data changes and ensure data consistency.
 
 ---
 
@@ -64,11 +49,11 @@ With the schema defined, you can store entities:
 (get-named-item schema store-v3 :users :current)
 ;; Returns {:id 1 :username "retro" :likes "programming"}
 ```
-As you can see the data is kept consistent, without any manual synchronisation.
+Data is kept consistent — no manual synchronisation required.
 
 ## Relations
 
-### One to One relations
+### One-to-One relations
 
 EntityDB can handle simple relations between entities. Relations are defined in the schema:
 
@@ -111,9 +96,9 @@ When you insert an entity into the EntityDB multiple times, it's data will be me
 
 When you access a nested relation stored in EntityDB, it will be wrapped inside a function. This ensures that circular relations can be resolved.
 
-### One to Many relations
+### One-to-Many relations
 
-EntityDB supports one to many relations too:
+EntityDB supports one-to-many relations too:
 
 ```clojure
 (def schema {:users {:id :id
@@ -145,7 +130,7 @@ EntityDB supports one to many relations too:
 
 ---
 
-Relations support in EntityDB provides you with an effortless way to keep your data consistent.
+Relations support in EntityDB provides you with a flexible way to keep your data consistent.
 
 Read the EntityDB [API docs](api/keechma.edb.html).
 
