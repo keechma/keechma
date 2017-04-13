@@ -1,6 +1,6 @@
 # EntityDB
 
-The big idea behind EntityDB is consistency. It ensures that there is only one instance of each entity in your application. This enables you to write simpler code and avoid a whole class of bugs related to data synchronization. Gone too is the requirement to model your application state in a quickly-unmanageable tree. EntityDB provides:
+The big idea behind EntityDB is consistency. Since it ensures that there is only one instance of each entity in your application, consistency is inherent. This enables you to write simpler code and avoid a whole class of bugs related to data synchronization. Gone too is the requirement to model your application state in a quickly-unmanageable tree. EntityDB provides:
 
 1. **Data Consistency** — collections of entities are kept up-to-date: remove an entity from EntityDB and it is removed from any collections that contain it
 2. **Rendering Consistency** — any change to an entity is reflected everywhere it is rendered (e.g. a master-detail layout)
