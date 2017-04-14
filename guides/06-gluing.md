@@ -1,8 +1,8 @@
 # Gluing everything together
 
-In previous articles, we covered everything you need to understand to build an application with Keechma. There's one last question: how do we actually assemble everything together and render it on the page?
+In previous articles, we covered everything you need to understand to build an application with Keechma. There's one last question: how do we assemble everything and render it on the page?
 
-Keechma comes with a library that takes care of that. It does the following:
+Keechma comes with a library that brings it all together; it:
 
 1. Binds the router to the history change event
 2. Creates a system from the components you registered and resolves their dependencies
