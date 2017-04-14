@@ -1,15 +1,17 @@
 # Gluing everything together
 
-In previous articles, we covered all the concepts you need to understand when building an application in Keechma. The last question is, how do we actually assemble everything together and render it on the page?
+In previous articles, we covered everything you need to understand to build an application with Keechma. There's one last question: how do we assemble everything and render it on the page?
 
-Keechma comes with a library that takes care of that. It does the following:
+Keechma comes with a library that brings it all together; it:
 
-1. Binds the router to the history change event (right now pushState isn't implemented, but it's coming soon)
+1. Binds the router to the history change event
 2. Creates a system from the components you registered and resolves their dependencies
 3. Starts the controller manager
 4. Mounts the application to the DOM element
 
-Keechma apps can be started and stopped. Stopping the app will do the cleanup (unbind the router) and remove it from the page.
+## Starting and stopping
+
+With `start!` and `stop!`, Keechma applications can simply be turned on and off. Stopping the app will do the cleanup (unbind the router) and remove it from the page.
 
 ```clojure
 (def app {[...list of routes...]
@@ -26,7 +28,7 @@ Keechma apps can be started and stopped. Stopping the app will do the cleanup (u
 
 ## Communication between the application parts
 
-When starting the app, Keechma will create a commands channel that can be used by the UI components to send commands to the controllers. Keys used to register the controllers are topics on which they listen for messages.
+When starting the app, Keechma creates a commands channel that can be used by the UI components to send commands to the controllers. Keys used to register the controllers are topics on which they listen for messages.
 
 Example:
 
@@ -52,7 +54,7 @@ When you want a component to be able to send a messages to a controller, you hav
 
 ## Where to go next
 
-If you want to learn more about Keechma you have the following sources at your disposal:
+You have lots of options for learning more about building a Keechma app. Here are a few:
 
 - [API docs](api/index.html)
 - [Example applications](07-examples.html)
