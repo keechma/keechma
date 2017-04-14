@@ -1,40 +1,43 @@
 # UI System
 
-Keechma provides you with a way to write decoupled, reusable UI components. It's still using Reagent to implement and render the components but adds some structure around it to keep the things clean.
+Keechma allows you to write decoupled, reusable UI components. It's still using Reagent to implement and render them — it just adds some structure to keep things clean.
 
 ## Untangling the UI
 
-UI is the messiest part of frontend application development. By default, the components are coupled to the application's state, (sometimes) to their parent components and (almost always) to their child components.
+The UI is the messiest part of frontend application development. In most architectures, the components are coupled to the application's state, (sometimes) to their parent components and (almost always) to their child components.
 
 >Most of our components take the entire app state as their data. Parent components don’t pass their children sub cursor with just the bits they care about, they pass them the whole enchilada. Then we have a slew of paths defined in vars, which we use to extract the data we want. It’s not ideal. But it’s what we’ve had to do.
 >
->From the [Why We Use Om, and Why We’re Excited for Om Next](http://blog.circleci.com/why-we-use-om-and-why-were-excited-for-om-next/) blog post
+>From the [Why We Use Om, and Why We’re Excited for Om Next](http://blog.circleci.com/why-we-use-om-and-why-were-excited-for-om-next/) by Peter Jaros
 
-Keechma allows you to decouple UI components without falling into one of these traps:
+Peter understands. Most architectures have these two serious traps: 
 
-- Passing data from parent to child components
-  + it gets hard to maintain
-  + moving components around is hard
-  + each component must know about any component below it
-- Global dependence on the application's state
-  + no way to reuse the components
-  + testing is hard
+- **Parent components pass data to their children** — Forcing parent components to be aware of the needs of their children makes the "data plumbing" complicated, making the system hard to maintain and difficult to change.
+- **Global dependence on the application state** — This dependency makes testing difficult and reuse impossible.
 
-To achieve that, you'll need to write slightly more code but it pays off in the end. Let's say that you have a component that renders a list of users. That component is rendered inside the `user-page` component which is rendered inside the `layout` component.
+<table>
+<tr><td>You want this...</td><td>Not this...</td></tr>
+<tr>
+<td><img src="http://i.imgur.com/YVxxNUl.jpg" alt="home run plumbing" width=300/></td>
+<td><img src="http://www.stephenadams.com/badplumbing/images/badplumbing_16.jpg" alt="cluster plumbing" width=300/></td>
+</tr>
+</table>
 
-Neither the `user-page` nor the `layout` component cares about the data that the `user-list` component needs. The user component declares it's dependencies in a Clojure record, and when it's rendered it will get it's dependencies injected from the application.
+With just a little extra code, Keechma allows you to decouple all UI components. No more plumbing traps. 
 
-The problem with this approach is that the parent component has to be able to render the `user-list` component with the correct context. This means that the `user-page` can't just require the component. It needs to declare it's dependency on the `user-list` component which will allow it to render the correct **version** of the `user-list` component.
+For example, let's say that you have a component that renders a list of users (`user-list`). It is rendered inside a `user-page` component which, in turn, is rendered inside a `layout` component. In Keechma, neither `user-page` nor `layout` cares about the data that `user-list` needs. The user component simply declares its dependencies in a Clojure record. When it's rendered, its dependencies are injected directly.
 
-That's why Keechma implements the UI systems. UI systems allow components to get the right sub-component and data dependencies injected in.
+Instead of passing data around, the only requirement is for the parent to declare its dependency upon each child. This provides context for the child component. In our example, `user-page` explicitly declares its dependency on `user-list` which will allow it to render the correct **version** of the component.
+
+Keechma's UI system allows components to simply declare child components, each carrying its own data dependencies (if it has them). No more worrying about what data needs to be sent where.
 
 ### Data dependencies
 
-Components declare dependencies on `subscriptions`. Subscriptions are functions that get the `app-state` atom passed in and return a subset of the data (They are almost identical to the [Re/Frame's subscriptions](https://github.com/Day8/re-frame#subscribe) although they are not global).
+Components declare dependencies on `subscriptions`. Subscriptions are functions that receive the `app-state` atom as a parameter and return a subset of the data (They are almost identical to the [Re/Frame's subscriptions](https://github.com/Day8/re-frame#subscribe) although they are not global).
 
 ---
 
-To reiterate, each component needs to declare dependencies on the data it needs to render, and on the child components, it needs to render - unless you're using pure components that have no dependencies, they can be required.
+Again, each component declares both its data and child-component dependencies. There is an exception: if a child component has no data dependencies, it can simply be required.
 
 Example:
 
@@ -86,7 +89,7 @@ Example:
 
 There you have it, a completely decoupled UI system. The tradeoff is that you must explicitly declare dependencies for each component.
 
-This way of building UI components has some other advantages too. For instance if later you build an alternative `user-list` component, that is rendering the user list differently, the only place where you must update the code is where you define the system:
+This way of building your UI has other advantages too. For instance, if later you build a better `user-list` component, only the system definition needs to be changed:
 
 ```clojure
 (def system
@@ -97,11 +100,11 @@ This way of building UI components has some other advantages too. For instance i
 ;; returns the bound `:main` component which can be mounted in the page
 ```
 
-Both the `layout` and the `user-page` component will continue to work the same.
+Neither `layout` nor `user-page` requires refactoring.
 
 ### Composing systems
 
-Another advantage is that you can compose UI systems. If you had a big app with a lot of different areas, each area could be a system on it's own:
+Keechma also allows UI system composition. If your app has many different functional areas, each could be defined as its own system:
 
 ```clojure
 (def user-page-system
@@ -116,11 +119,11 @@ Another advantage is that you can compose UI systems. If you had a big app with 
      :news-page news-page-system}))
 ```
 
-This allows you to easily scale your application, without ever building an unmanageable monolith.
+You can easily scale your application. No more unmanageable monoliths.
 
-### Manual dependency resolving
+### Resolving dependencies manually
 
-Let's say you have a generalized grid component and you use it in a few places in your project, eg. news list, and user list. With Keechma it's trivial to create two versions of this component, each mapped to it's own dependencies:
+Let's say you created a generalized grid component and want to reuse it in a few places in your project, e.g. news list, user list, etc. With Keechma it's trivial to create different versions of a component, each mapped to its own dependencies:
 
 ```clojure
 (def system
@@ -131,11 +134,11 @@ Let's say you have a generalized grid component and you use it in a few places i
                   grid-component :list news-list))})
 ```
 
-When you manually resolve dependencies, all unresolved dependencies will still be automatically resolved.
+Any dependencies left unresolved manually will be handled automatically.
 
 ---
 
-The UI system in Keechma allows you to write applications that encourage reuse of UI components, and by organizing them into sub-systems we can achieve code base scalability. You can also avoid the need to split your apps into smart and dumb components. All components are dumb and isolated, they get everything injected from the outside.
+Keechma's UI system allows you to reuse components, organize them into sub-systems and to scale your code base — all without having to build both smart _and_ dumb components. All Keechma's components are both dumb and decoupled; everything is injected from outside.
 
 Here are the UI system [API docs](api/keechma.ui-component.html).
 
