@@ -1,6 +1,6 @@
 # UI System
 
-Keechma provides you with a way to write decoupled, reusable UI components. It's still using Reagent to implement and render the components but adds some structure to keep things clean.
+Keechma allows you to write decoupled, reusable UI components. It's still using Reagent to implement and render them — it just adds some structure to keep things clean.
 
 ## Untangling the UI
 
@@ -89,7 +89,7 @@ Example:
 
 There you have it, a completely decoupled UI system. The tradeoff is that you must explicitly declare dependencies for each component.
 
-This way of building UI components has other advantages too. For instance, if later you build a better `user-list` component,  only the system definition needs to be changed:
+This way of building your UI has other advantages too. For instance, if later you build a better `user-list` component,  only the system definition needs to be changed:
 
 ```clojure
 (def system
@@ -100,7 +100,7 @@ This way of building UI components has other advantages too. For instance, if la
 ;; returns the bound `:main` component which can be mounted in the page
 ```
 
-Neither `layout` nor `user-page` require refactoring.
+Neither `layout` nor `user-page` requires refactoring.
 
 ### Composing systems
 
@@ -121,7 +121,7 @@ Keechma also allows UI system composition. If your app has many different functi
 
 You can easily scale your application. No more unmanageable monoliths.
 
-### Manual dependency resolving
+### Resolving dependencies manually
 
 Let's say you created a generalized grid component and want to reuse it in a few places in your project, e.g. news list, user list, etc. With Keechma it's trivial to create different versions of a component, each mapped to it's own dependencies:
 
@@ -134,11 +134,11 @@ Let's say you created a generalized grid component and want to reuse it in a few
                   grid-component :list news-list))})
 ```
 
-Any dependencies left unresolved manually will be resolved automatically.
+Any dependencies left unresolved manually will be handled automatically.
 
 ---
 
-The UI system in Keechma allows you to reuse components, organize them into sub-systems and to scale your code base — all without having to build both smart and dumb components. All Keechma's components are dumb and decoupled; everything is injected from outside.
+Keechma's UI system allows you to reuse components, organize them into sub-systems and to scale your code base — all without having to build both smart _and_ dumb components. All Keechma's components are both dumb and decoupled; everything is injected from outside.
 
 Read the UI system [API docs](api/keechma.ui-component.html).
 
