@@ -12,8 +12,8 @@ The UI is the messiest part of frontend application development. In most archite
 
 Peter understands. Most architectures have these two serious traps: 
 
-- **Parent components pass data to their children** — forcing parent components to be aware of the needs of their children makes the "data plumbing" complicated, making the system hard to maintain and difficult to change
-- **Global dependence on the application state** — this makes testing difficult and reuse impossible
+- **Parent components pass data to their children** — Forcing parent components to be aware of the needs of their children makes the "data plumbing" complicated, making the system hard to maintain and difficult to change.
+- **Global dependence on the application state** — This dependency makes testing difficult and reuse impossible.
 
 <table>
 <tr><td>You want this...</td><td>Not this...</td></tr>
@@ -25,11 +25,11 @@ Peter understands. Most architectures have these two serious traps:
 
 With just a little extra code, Keechma allows you to decouple all UI components. No more plumbing traps. 
 
-For example, let's say that you have a component that renders a list of users (`user-list`). It is rendered inside a `user-page` component which, in turn, is rendered inside a `layout` component. In Keechma, neither `user-page` nor `layout` cares about the data that `user-list` needs. The user component simply declares it's dependencies in a Clojure record. When it's rendered, it's dependencies are injected directly.
+For example, let's say that you have a component that renders a list of users (`user-list`). It is rendered inside a `user-page` component which, in turn, is rendered inside a `layout` component. In Keechma, neither `user-page` nor `layout` cares about the data that `user-list` needs. The user component simply declares its dependencies in a Clojure record. When it's rendered, its dependencies are injected directly.
 
-Instead of passing data around, the only requirement is for the parent to declare it's dependency upon each child. This provides context for the child component. In our example, `user-page` explicitly declares it's dependency on `user-list` which will allow it to render the correct **version** of the component.
+Instead of passing data around, the only requirement is for the parent to declare its dependency upon each child. This provides context for the child component. In our example, `user-page` explicitly declares its dependency on `user-list` which will allow it to render the correct **version** of the component.
 
-Keechma's UI system allows components to simply declare child components, each carrying it's own data dependencies (if it has them). No more worrying about what data needs to be sent where.
+Keechma's UI system allows components to simply declare child components, each carrying its own data dependencies (if it has them). No more worrying about what data needs to be sent where.
 
 ### Data dependencies
 
@@ -89,7 +89,7 @@ Example:
 
 There you have it, a completely decoupled UI system. The tradeoff is that you must explicitly declare dependencies for each component.
 
-This way of building your UI has other advantages too. For instance, if later you build a better `user-list` component,  only the system definition needs to be changed:
+This way of building your UI has other advantages too. For instance, if later you build a better `user-list` component, only the system definition needs to be changed:
 
 ```clojure
 (def system
@@ -104,7 +104,7 @@ Neither `layout` nor `user-page` requires refactoring.
 
 ### Composing systems
 
-Keechma also allows UI system composition. If your app has many different functional areas, each could be defined as it's own system:
+Keechma also allows UI system composition. If your app has many different functional areas, each could be defined as its own system:
 
 ```clojure
 (def user-page-system
@@ -123,7 +123,7 @@ You can easily scale your application. No more unmanageable monoliths.
 
 ### Resolving dependencies manually
 
-Let's say you created a generalized grid component and want to reuse it in a few places in your project, e.g. news list, user list, etc. With Keechma it's trivial to create different versions of a component, each mapped to it's own dependencies:
+Let's say you created a generalized grid component and want to reuse it in a few places in your project, e.g. news list, user list, etc. With Keechma it's trivial to create different versions of a component, each mapped to its own dependencies:
 
 ```clojure
 (def system
