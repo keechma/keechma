@@ -1,6 +1,6 @@
 # Gluing everything together
 
-In previous articles, we covered all the concepts you need to understand when building an application in Keechma. There's one last question: how do we actually assemble everything together and render it on the page?
+In previous articles, we covered everything you need to understand to build an application with Keechma. There's one last question: how do we actually assemble everything together and render it on the page?
 
 Keechma comes with a library that takes care of that. It does the following:
 
@@ -11,7 +11,7 @@ Keechma comes with a library that takes care of that. It does the following:
 
 ## Starting and stopping
 
-Keechma apps can be started and stopped. Stopping the app will do the cleanup (unbind the router) and remove it from the page.
+With `start!` and `stop!`, Keechma applications can simply be turned on and off. Stopping the app will do the cleanup (unbind the router) and remove it from the page.
 
 ```clojure
 (def app {[...list of routes...]
