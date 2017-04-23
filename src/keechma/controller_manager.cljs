@@ -4,8 +4,12 @@
             [keechma.controller :as controller :refer [SerializedController]])
   (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
-(defn ^:private send-command-to [reporter controller command-name args] 
-  (reporter :controller :in (:name controller) command-name args :info)
+(defn ^:private send-command-to [reporter controller command-name args]
+  (if (= :route-changed command-name)
+    (do
+      (reporter :app :out :controller [(:name controller) command-name] args :info)
+      (reporter :controller :in (:name controller) [:lifecycle command-name] args :info))
+    (reporter :controller :in (:name controller) command-name args :info))
   (put! (:in-chan controller) [command-name args])
   controller)
 
@@ -47,8 +51,8 @@
       (if-let [s (first stop)]
         (let [[topic params] s]
           (reporter :app :out :controller [topic :stop] params :info)
-          (reporter :controller :in topic [:lifecycle :stop] params :info)
           (let [controller (get running-controllers topic)
+                _ (reporter :controller :in topic [:lifecycle :stop] (:params controller) :info)
                 new-app-db (-> (controller/stop controller (:params controller) app-db)
                                (dissoc-in [:internal :running-controllers topic]))]
             (close! (:in-chan controller))

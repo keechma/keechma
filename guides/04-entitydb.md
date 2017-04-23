@@ -132,5 +132,5 @@ EntityDB supports one-to-many relations too:
 
 Relations support in EntityDB provides you with a flexible way to keep your data consistent.
 
-Here are the EntityDB [API docs](api/keechma.edb.html).
+Here are the EntityDB [API docs](/api/entitydb/).
 

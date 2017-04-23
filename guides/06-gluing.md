@@ -56,7 +56,7 @@ When you want a component to be able to send a messages to a controller, you hav
 
 You have lots of options for learning more about building a Keechma app. Here are a few:
 
-- [API docs](api/index.html)
-- [Example applications](07-examples.html)
-- [Whole application walkthrough](08-application-walkthrough.html)
+- [API docs](/api/)
+- [Example applications](/annotated/)
+- [Whole application walkthrough](/guides/application-walkthrough/)
 

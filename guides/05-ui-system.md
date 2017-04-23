@@ -140,5 +140,5 @@ Any dependencies left unresolved manually will be handled automatically.
 
 Keechma's UI system allows you to reuse components, organize them into sub-systems and to scale your code base — all without having to build both smart _and_ dumb components. All Keechma's components are both dumb and decoupled; everything is injected from outside.
 
-Here are the UI system [API docs](api/keechma.ui-component.html).
+Here are the UI system [API docs](/api/keechma/keechma_ui-component/).
 
