@@ -10,7 +10,7 @@ The UI is the messiest part of frontend application development. In most archite
 >
 >From the [Why We Use Om, and Why We’re Excited for Om Next](http://blog.circleci.com/why-we-use-om-and-why-were-excited-for-om-next/) by Peter Jaros
 
-Peter understands. Most architectures have these two serious traps: 
+Peter understands. Most architectures have these two serious traps:
 
 - **Parent components pass data to their children** — Forcing parent components to be aware of the needs of their children makes the "data plumbing" complicated, making the system hard to maintain and difficult to change.
 - **Global dependence on the application state** — This dependency makes testing difficult and reuse impossible.
@@ -23,7 +23,7 @@ Peter understands. Most architectures have these two serious traps:
 </tr>
 </table>
 
-With just a little extra code, Keechma allows you to decouple all UI components. No more plumbing traps. 
+With just a little extra code, Keechma allows you to decouple all UI components. No more plumbing traps.
 
 For example, let's say that you have a component that renders a list of users (`user-list`). It is rendered inside a `user-page` component which, in turn, is rendered inside a `layout` component. In Keechma, neither `user-page` nor `layout` cares about the data that `user-list` needs. The user component simply declares its dependencies in a Clojure record. When it's rendered, its dependencies are injected directly.
 
@@ -52,7 +52,7 @@ Example:
 
 (defn user-table-component
   (ui/constructor
-    {:renderer user-list-renderer
+    {:renderer user-table-renderer
      :subscription-deps [:user-list]}))
      ;; Declare that this component is dependent on the `:user-list` subscription
 
@@ -141,4 +141,3 @@ Any dependencies left unresolved manually will be handled automatically.
 Keechma's UI system allows you to reuse components, organize them into sub-systems and to scale your code base — all without having to build both smart _and_ dumb components. All Keechma's components are both dumb and decoupled; everything is injected from outside.
 
 Here are the UI system [API docs](/api/keechma/keechma_ui-component/).
-
