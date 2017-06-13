@@ -973,3 +973,18 @@
                  (done)))))))
 
 
+(defrecord ControllerReturningFalseFromParams []
+  controller/IController
+  (params [this route-params] false))
+
+(deftest controller-returning-fasle-from-params
+  (let [[c unmount] (make-container)
+        app-renderer (fn [ctx] [:div])
+        app {:controllers {:main (->ControllerReturningFalseFromParams)}
+             :html-element c
+             :components {:main {:renderer app-renderer}}}]
+    (async done
+           (go
+             (app-state/start! app)
+             (<! (timeout 20))
+             (done)))))

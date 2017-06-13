@@ -42,4 +42,3 @@
              (<! (timeout 1))
              (is (= true (:called @app-db)))
              (done)))))
-

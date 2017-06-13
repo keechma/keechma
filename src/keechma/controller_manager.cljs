@@ -37,10 +37,10 @@
                     prev-params (:params running-controller)]
                 (cond
                   (= SerializedController (type running-controller)) (assoc acc :wake (assoc wake topic new-params))
-                  (and (nil? prev-params) (nil? new-params))     acc
-                  (and (nil? prev-params) (boolean new-params)) (assoc acc :start (assoc start topic new-params))
-                  (and (boolean prev-params) (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
-                  (not= new-params prev-params)                 (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
+                  (and (nil? prev-params) (nil? new-params))  acc
+                  (and (nil? prev-params) (some? new-params)) (assoc acc :start (assoc start topic new-params))
+                  (and (some? prev-params) (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
+                  (not= new-params prev-params)               (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
                   (= new-params prev-params)    (assoc acc :route-changed (conj route-changed topic))
                   :else acc))) plan controllers)))
 
