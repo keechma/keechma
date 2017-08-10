@@ -8,62 +8,62 @@
 
 ;; Setup ---------------------------------------------
 
-(defrecord FooController []
-  controller/IController
-  (start [_ params state]
-    (let [runs (or (:runs state) 0)]
-      (merge state {:params params :runs (inc runs) :state :started})))
-  (stop [_ params state]
-    (assoc state :state :stopped)))
+(defrecord FooController [])
+
+(defmethod controller/start FooController [_ params state]
+  (let [runs (or (:runs state) 0)]
+    (merge state {:params params :runs (inc runs) :state :started})))
+
+(defmethod controller/stop FooController [_ params state]
+  (assoc state :state :stopped))
 
 (def foo-controller (assoc (->FooController) :in-chan (chan)))
 
 (defn add-to-log [state msg]
   (assoc state :log (conj (or (:log state) []) msg)))
 
-(defrecord UsersController []
-  controller/IController
-  (params [_ route-params]
-    (when (= (:page route-params) "users")
-      true))
-  (start [_ params state]
-    (add-to-log state [:users :start]))
-  (stop [_ params state]
-    (add-to-log state [:users :stop])))
+(defrecord UsersController [])
+ 
+(defmethod controller/params UsersController [_ route-params]
+  (when (= (:page route-params) "users")
+    true))
+(defmethod controller/start UsersController [_ params state]
+  (add-to-log state [:users :start]))
+(defmethod controller/stop UsersController [_ params state]
+  (add-to-log state [:users :stop]))
 
-(defrecord CurrentUserController []
-  controller/IController
-  (params [_ route-params]
-    (:user-id route-params))
-  (start [_ params state]
-    (add-to-log state [:current-user :start]))
-  (handler [this app-db in-chan out-chan]
-    (go
-      (loop []
+
+
+(defrecord CurrentUserController [])
+
+(defmethod controller/params CurrentUserController [_ route-params]
+  (:user-id route-params))
+(defmethod controller/start CurrentUserController [_ params state]
+  (add-to-log state [:current-user :start]))
+(defmethod controller/handler CurrentUserController [this app-db in-chan out-chan]
+  (go
+    (loop []
+      (let [[command args] (<! in-chan)]
+        (when command
+          (reset! app-db (add-to-log @app-db [:users :command command]))
+          (when (= :stop command)
+            ;; Channel should be closed before this can be put on it
+            (put! in-chan [:this-should-be :ignored]))
+          (recur))))))
+(defmethod controller/stop CurrentUserController [this params state]
+  (controller/execute this :stop)
+  (add-to-log state [:current-user :stop]))
+
+(defrecord SessionController [])
+(defmethod controller/params SessionController [_ _] true)
+(defmethod controller/start SessionController [this params state]
+  (controller/execute this :start)
+  (add-to-log state [:session :start]))
+(defmethod controller/handler SessionController [this app-db in-chan out-chan]
+  (go (loop []
         (let [[command args] (<! in-chan)]
-          (when command
-            (reset! app-db (add-to-log @app-db [:users :command command]))
-            (when (= :stop command)
-              ;; Channel should be closed before this can be put on it
-              (put! in-chan [:this-should-be :ignored]))
-            (recur))))))
-  (stop [this params state]
-    (do
-      (controller/execute this :stop)
-      (add-to-log state [:current-user :stop]))))
-
-(defrecord SessionController []
-  controller/IController
-  (params [_ _] true)
-  (start [this params state]
-    (do
-      (controller/execute this :start) 
-      (add-to-log state [:session :start])))
-  (handler [this app-db in-chan out-chan]
-    (go (loop []
-          (let [[command args] (<! in-chan)]
-            (reset! app-db (add-to-log @app-db [:session :command command]))
-            (when command (recur)))))))
+          (reset! app-db (add-to-log @app-db [:session :command command]))
+          (when command (recur))))))
 
 ;; End Setup -----------------------------------------
 
@@ -113,13 +113,13 @@
              (>! route-chan {:page "users"})
              (<! (timeout 20))
              (is (= (get-log (range 3)) (:log @app-db)))
-             (is (= [:users :session] (keys (get-in @app-db [:internal :running-controllers]))))
+             (is (= (set [:users :session]) (set (keys (get-in @app-db [:internal :running-controllers])))))
 
 
              (>! route-chan {:page "current-user" :user-id 1})
              (<! (timeout 20))
              (is (= (get-log (range 4)) (:log @app-db)))
-             (is (= [:current-user :session] (keys (get-in @app-db [:internal :running-controllers]))))
+             (is (= (set [:current-user :session]) (set (keys (get-in @app-db [:internal :running-controllers])))))
 
 
              (>! commands-chan [[:session :test-command] "some argument"])
@@ -130,7 +130,7 @@
              (>! route-chan {:page "current-user" :user-id 2})
              (<! (timeout 20))
              (is (= (get-log (range 6)) (:log @app-db)))
-             (is (= [:current-user :session] (keys (get-in @app-db [:internal :running-controllers]))))
+             (is (= (set [:current-user :session]) (set (keys (get-in @app-db [:internal :running-controllers])))))
 
              ((:stop @app-instance))
              (done)))))

@@ -5,15 +5,14 @@
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]))
 
 
-(defrecord FooController [out-chan running name]
-  controller/IController)
+(defrecord FooController [out-chan running name])
 
-(defrecord DispatcherController [name in-chan]
-  controller/IController
-  (handler [_ app-db-atom in-chan _]
-    (controller/dispatcher app-db-atom in-chan
-                           {:baz-command (fn [app-db-atom]
-                                           (swap! app-db-atom assoc :called true))})))
+(defrecord DispatcherController [name in-chan])
+
+(defmethod controller/handler DispatcherController [_ app-db-atom in-chan _]
+  (controller/dispatcher app-db-atom in-chan
+                         {:baz-command (fn [app-db-atom]
+                                         (swap! app-db-atom assoc :called true))}))
 
 (deftest controller-default-behavior []
   (let [out-chan (chan)
@@ -32,7 +31,7 @@
 
 
 (deftest controller-dispatcher []
-  (let [app-db (atom)
+  (let [app-db (atom nil)
         in-chan (chan)
         dispatcher-controller (->DispatcherController :dispatcher in-chan)] 
     (controller/handler dispatcher-controller app-db in-chan nil)

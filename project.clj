@@ -3,11 +3,13 @@
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
 
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.229"]
-                 [reagent "0.6.0" :exclusions [cljsjs/react]]
-                 [cljsjs/react-with-addons "15.2.1-0"]
-                 [cljs-react-test "0.1.4-SNAPSHOT" :exclusions [cljsjs/react-with-addons]]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha17"]
+                 [org.clojure/clojurescript "1.9.854"]
+                 [reagent "0.7.0" :exclusions [cljsjs/react cljsjs/react-dom]]
+                 [cljsjs/react-with-addons "15.6.1-0"]
+                 [cljsjs/react-dom "15.6.1-0" :exclusions [cljsjs/react]]
+                 [cljsjs/react-dom-server "15.6.1-0" :exclusions [cljsjs/react]]
+                 [org.clojars.mihaelkonjevic/cljs-react-test "0.1.5" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
                  [funcool/cuerdas "2.0.1"]
                  [lein-doo "0.1.7"]
@@ -17,7 +19,7 @@
                  [keechma/entitydb "0.1.0"]
                  [com.cognitect/transit-cljs "0.8.239"]]
 
-  :plugins [[lein-cljsbuild "1.1.5"]
+  :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.8"]
             [lein-doo "0.1.7"]
             [lein-codox "0.9.3"]]

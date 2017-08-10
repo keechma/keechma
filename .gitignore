@@ -14,3 +14,4 @@ pom.xml
 node_modules
 pom.xml.asc
 tags
+checkouts

@@ -1,5 +1,7 @@
 (ns keechma.test.app-state
   (:require [cljs.test :refer-macros [deftest is async]] 
+            [cljsjs.react.dom]
+            [cljsjs.react]
             [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
@@ -17,7 +19,7 @@
   (let [c (tu/new-container!)]
     [c #(tu/unmount! c)]))
 
-(deftest empty-start-stop []
+(deftest empty-start-stop []  
   (let [[c unmount] (make-container)
         app (app-state/start!
              {:html-element c
@@ -29,26 +31,25 @@
              (is (= (.-innerText c) "HELLO WORLD"))
              (app-state/stop! app done)))))
 
-(defrecord AppStartController [inner-app]
-  controller/IController
-  (params [_ _] true)
-  ;; When the controller is started, start the inner app and save
-  ;; it's definition inside the app-db
-  (start [this params app-db]
-    (assoc app-db :inner-app (app-state/start! inner-app false)))
-  (wake [this params app-db]
-    (let [serialized-app (:inner-app app-db)]
-      (assoc app-db :inner-app (app-state/start! (assoc inner-app :initial-data serialized-app) false))))
-  ;; When the controller is stopped, stop the inner app
-  (stop [this params app-db]
-    (app-state/stop! (:inner-app app-db))
-    app-db))
+(defrecord AppStartController [inner-app])
+
+(defmethod controller/params AppStartController [_ _] true)
+;; When the controller is started, start the inner app and save
+;; it's definition inside the app-db
+(defmethod controller/start AppStartController [this params app-db]
+  (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
+(defmethod controller/wake AppStartController [this params app-db]
+  (let [serialized-app (:inner-app app-db)]
+    (assoc app-db :inner-app (app-state/start! (assoc (:inner-app this) :initial-data serialized-app) false))))
+(defmethod controller/stop AppStartController [this params app-db]
+  (app-state/stop! (:inner-app app-db))
+  app-db)
 
 (deftest multiple-apps []
   (let [[c unmount] (make-container)
         ;; definition of the inner app
         inner-app
-        {:components {:main {:renderer (fn [_] [:div "INNER APP"])}}} 
+        {:components {:main {:renderer (fn [_] [:div "INNER APP"])}}}
         ;; renderer function of the main app
         ;; it gets the inner app's main component from the app
         ;; state and renders it
@@ -76,11 +77,11 @@
              (is (= (.-innerText c) "INNER APP")) 
              (app-state/stop! outer-app done)))))
 
-(defrecord RedirectController []
-  controller/IController
-  (start [this app-db _]
-    (controller/redirect this {:foo "bar"})
-    app-db))
+(defrecord RedirectController [])
+
+(defmethod controller/start RedirectController [this app-db _]
+  (controller/redirect this {:foo "bar"})
+  app-db)
 
 (deftest redirect-from-controller []
   (let [[c unmount] (make-container)
@@ -115,13 +116,13 @@
                (app-state/stop! app done))))))
 
 
-(defrecord ClickController []
-  controller/IController
-  (handler [_ app-state-atom in-chan _]
-    (controller/dispatcher app-state-atom in-chan
-                           {:inc-counter (fn [app-state-atom]
-                                           (swap! app-state-atom assoc-in [:kv :counter]
-                                                  (inc (get-in @app-state-atom [:kv :counter]))))})))
+(defrecord ClickController [])
+
+(defmethod controller/handler ClickController [_ app-state-atom in-chan _]
+  (controller/dispatcher app-state-atom in-chan
+                         {:inc-counter (fn [app-state-atom]
+                                         (swap! app-state-atom assoc-in [:kv :counter]
+                                                (inc (get-in @app-state-atom [:kv :counter]))))}))
 
 (deftest state-restore []
   (let [[c unmount] (make-container)
@@ -167,15 +168,16 @@
                        (app-state/stop! app-v3)
                        (done))))))))))
 
-(defrecord ReactNativeController [route-atom]
-  controller/IController
-  (params [this route]
-    (reset! (:route-atom this) route)
-    true)
-  (handler [this app-db-atom in-chan _]
-    (controller/dispatcher app-db-atom in-chan
-                           {:route-changed (fn [app-db-atom value]
-                                             (reset! (:route-atom this) value))})))
+(defrecord ReactNativeController [route-atom])
+
+(defmethod controller/params ReactNativeController [this route]
+  (reset! (:route-atom this) route)
+  true)
+
+(defmethod controller/handler ReactNativeController [this app-db-atom in-chan _]
+  (controller/dispatcher app-db-atom in-chan
+                         {:route-changed (fn [app-db-atom value]
+                                           (reset! (:route-atom this) value))}))
 
 (deftest react-native-router []
   (let [route-atom (atom nil)
@@ -228,22 +230,24 @@
              (done)))))
 
 
-(defrecord ControllerA [kv-state-atom]
-  controller/IController
-  (params [_ _] true)
-  (handler [_ app-db-atom _ _]
-    (swap! app-db-atom assoc-in [:kv :foo] :bar)
-    (reset! kv-state-atom (:kv @app-db-atom))))
+(defrecord ControllerA [kv-state-atom])
 
-(defrecord ControllerB [kv-state-atom]
-  controller/IController
-  (params [_ _] true)
-  (start [_ _ app-db]
-    (assoc-in app-db [:kv :start] :value))
-  (handler [_ app-db-atom _ _]
-    (js/setTimeout (fn []
-                     (swap! app-db-atom assoc-in [:kv :baz] :qux)
-                     (reset! kv-state-atom (:kv @app-db-atom))) 10)))
+(defmethod controller/params ControllerA [_ _] true)
+(defmethod controller/handler ControllerA [this app-db-atom _ _]
+  (swap! app-db-atom assoc-in [:kv :foo] :bar)
+  (reset! (:kv-state-atom this) (:kv @app-db-atom)))
+
+
+
+(defrecord ControllerB [kv-state-atom])
+
+(defmethod controller/params ControllerB [_ _] true)
+(defmethod controller/start ControllerB [_ _ app-db]
+  (assoc-in app-db [:kv :start] :value))
+(defmethod controller/handler ControllerB [this app-db-atom _ _]
+ (js/setTimeout (fn []
+                  (swap! app-db-atom assoc-in [:kv :baz] :qux)
+                  (reset! (:kv-state-atom this) (:kv @app-db-atom))) 10))
 
 (deftest controller-kv-test []
   (let [kv-state-atom (atom nil)
@@ -259,11 +263,11 @@
              (is (= @kv-state-atom {:foo :bar :baz :qux :start :value}))
              (done)))))
 
-(defrecord ControllerChangeNumber []
-  controller/IController
-  (params [_ _] true)
-  (start [_ _ app-db]
-    (assoc-in app-db [:kv :number] 42)))
+(defrecord ControllerChangeNumber [])
+
+(defmethod controller/params ControllerChangeNumber [_ _] true)
+(defmethod controller/start ControllerChangeNumber [_ _ app-db]
+  (assoc-in app-db [:kv :number] 42))
 
 (deftest subscriptions-test []
   (let [[c unmount] (make-container)
@@ -801,15 +805,16 @@
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
 
-(defrecord ContextController []
-  controller/IController
-  (params [_ _] true)
-  (start [this _ app-db]
-    (let [context-fn-1 (controller/context this :context-fn-1)
-          context-fn-2 (controller/context this [:context :fn-2])]
-      (context-fn-1)
-      (context-fn-2)
-      app-db)))
+(defrecord ContextController [])
+
+(defmethod controller/params ContextController [_ _] true)
+(defmethod controller/start ContextController [this _ app-db]
+  (let [context-fn-1 (controller/context this :context-fn-1)
+        context-fn-2 (controller/context this [:context :fn-2])]
+    (context-fn-1)
+    (context-fn-2)
+    app-db))
+
 
 (deftest passing-context-to-controllers
   (let [call-count (atom 0)
@@ -830,13 +835,13 @@
              (unmount)
              (done)))))
 
-(defrecord ContextController2 []
-  controller/IController
-  (params [_ _] true)
-  (start [this _ app-db]
-    (let [context-fn-1 (controller/context this)]
-      (context-fn-1)
-      app-db)))
+(defrecord ContextController2 [])
+
+(defmethod controller/params ContextController2 [_ _] true)
+(defmethod controller/start ContextController2 [this _ app-db]
+  (let [context-fn-1 (controller/context this)]
+    (context-fn-1)
+    app-db))
 
 (deftest passing-context-to-controllers2
   (let [call-count (atom 0)
@@ -925,23 +930,23 @@
                  (is (= "INNER APP" (.-innerText c)))
                  (done)))))))
 
-(defrecord AsyncSsrHandlerController [log]
-  controller/IController
-  (params [this route-params] true)
-  (start [this params app-db]
-    (swap! log conj :start)
-    app-db)
-  (wake [this params app-db]
-    (swap! log conj :wake)
-    app-db)
-  (handler [this app-db-atom _ _]
-    (swap! log conj :handler))
-  (ssr-handler [this app-db-atom done _ _]
-    (swap! log conj :ssr-handler-start)
-    (js/setTimeout (fn []
-                     (swap! app-db-atom assoc-in [:kv :message] "Hello World!")
-                     (swap! log conj :ssr-handler-done)
-                     (done)) 30)))
+(defrecord AsyncSsrHandlerController [log])
+
+(defmethod controller/params AsyncSsrHandlerController [_ _] true)
+(defmethod controller/start AsyncSsrHandlerController [this params app-db]
+  (swap! (:log this) conj :start)
+  app-db)
+(defmethod controller/wake AsyncSsrHandlerController [this params app-db]
+  (swap! (:log this) conj :wake)
+  app-db)
+(defmethod controller/handler AsyncSsrHandlerController [this app-db-atom _ _]
+  (swap! (:log this) conj :handler))
+(defmethod controller/ssr-handler AsyncSsrHandlerController [this app-db-atom done _ _]
+  (swap! (:log this) conj :ssr-handler-start)
+  (js/setTimeout (fn []
+                   (swap! app-db-atom assoc-in [:kv :message] "Hello World!")
+                   (swap! (:log this) conj :ssr-handler-done)
+                   (done)) 30))
 
 (deftest async-handler-ssr []
   (let [[c unmount] (make-container)
@@ -973,9 +978,9 @@
                  (done)))))))
 
 
-(defrecord ControllerReturningFalseFromParams []
-  controller/IController
-  (params [this route-params] false))
+(defrecord ControllerReturningFalseFromParams [])
+
+(defmethod controller/params ControllerReturningFalseFromParams [this route-params] false)
 
 (deftest controller-returning-fasle-from-params
   (let [[c unmount] (make-container)

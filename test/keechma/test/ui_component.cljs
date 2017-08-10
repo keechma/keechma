@@ -1,5 +1,7 @@
 (ns keechma.test.ui-component
   (:require [cljs.test :refer-macros [deftest testing is use-fixtures async]]
+            [cljsjs.react.dom]
+            [cljsjs.react]
             [reagent.core :as reagent]
             [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
