@@ -17,7 +17,8 @@
                  [secretary "1.2.3"]
                  [keechma/router "0.1.0"]
                  [keechma/entitydb "0.1.0"]
-                 [com.cognitect/transit-cljs "0.8.239"]]
+                 [com.cognitect/transit-cljs "0.8.239"]
+                 [syntest "0.1.0-SNAPSHOT"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.8"]
@@ -54,8 +55,13 @@
                 :source-paths ["src" "test"]
                 :compiler {:output-to "resources/public/js/compiled/test.js"
                            :optimizations :none
-                           :main keechma.test.core}}]}
-
+                           :main keechma.test.core
+                           :install-deps true
+                           :npm-deps {:syn "0.10.0"
+                                      :karma "^0.13.16"
+                                      :karma-chrome-launcher "^0.2.2"
+                                      :karma-cljs-test "^0.1.0"}}}]}
+  
   :figwheel {;; :http-server-root "public" ;; default and assumes "resources"
              ;; :server-port 3449 ;; default
              ;; :server-ip "127.0.0.1"

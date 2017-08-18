@@ -2,7 +2,6 @@
   (:require [cljs.test :refer-macros [deftest is async]] 
             [cljsjs.react.dom]
             [cljsjs.react]
-            [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
@@ -11,13 +10,12 @@
             [keechma.ui-component :as ui]
             [keechma.app-state.react-native-router :as rn-router]
             [keechma.app-state.history-router :as history-router]
-            [keechma.ssr :as ssr])
+            [keechma.ssr :as ssr]
+            [keechma.test.util :refer [make-container]])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
-(defn make-container []
-  (let [c (tu/new-container!)]
-    [c #(tu/unmount! c)]))
+
 
 (deftest empty-start-stop []  
   (let [[c unmount] (make-container)
@@ -29,7 +27,9 @@
            (go
              (<! (timeout 100))
              (is (= (.-innerText c) "HELLO WORLD"))
-             (app-state/stop! app done)))))
+             (app-state/stop! app (fn []
+                                    (unmount)
+                                    (done)))))))
 
 (defrecord AppStartController [inner-app])
 
@@ -75,7 +75,9 @@
            (go
              (<! (timeout 100))
              (is (= (.-innerText c) "INNER APP")) 
-             (app-state/stop! outer-app done)))))
+             (app-state/stop! outer-app (fn []
+                                          (unmount)
+                                          (done)))))))
 
 (defrecord RedirectController [])
 
@@ -94,7 +96,9 @@
              (<! (timeout 100))
              (is (= (.. js/window -location -hash) "#!?foo=bar"))
              (set! (.-hash js/location) "")
-             (app-state/stop! app done)))))
+             (app-state/stop! app (fn []
+                                    (unmount)
+                                    (done)))))))
 
 (deftest redirect-from-component []
   (let [[c unmount] (make-container)
@@ -113,7 +117,9 @@
                (<! (timeout 100))
                (is (= (.. js/window -location -hash) "#!?baz=qux"))
                (set! (.-hash js/location) "")
-               (app-state/stop! app done))))))
+               (app-state/stop! app (fn []
+                                      (unmount)
+                                      (done))) )))))
 
 
 (defrecord ClickController [])
@@ -166,6 +172,7 @@
                        (<! (timeout 10))
                        (is (= (.-innerText h1-v3) "2"))
                        (app-state/stop! app-v3)
+                       (unmount)
                        (done))))))))))
 
 (defrecord ReactNativeController [route-atom])
@@ -928,6 +935,7 @@
                (let [app-config (assoc outer-app :initial-data (app-state/deserialize-app-state {} app-state))
                      app (app-state/start! app-config)]
                  (is (= "INNER APP" (.-innerText c)))
+                 (unmount)
                  (done)))))))
 
 (defrecord AsyncSsrHandlerController [log])
@@ -975,6 +983,7 @@
                      app (app-state/start! app-config)]
                  (is (= "Hello World!" (.-innerText c)))
                  (is (= [:start :ssr-handler-start :ssr-handler-done :wake :handler] @log))
+                 (unmount)
                  (done)))))))
 
 
@@ -992,4 +1001,5 @@
            (go
              (app-state/start! app)
              (<! (timeout 20))
+             (unmount)
              (done)))))

@@ -3,17 +3,12 @@
             [cljsjs.react.dom]
             [cljsjs.react]
             [reagent.core :as reagent]
-            [cljs-react-test.utils :as tu]
             [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
-            [keechma.ui-component :as ui])
+            [keechma.ui-component :as ui]
+            [keechma.test.util :refer [make-container]])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]))
-
-
-(defn make-container []
-  (let [c (tu/new-container!)]
-    [c #(tu/unmount! c)]))
 
 (deftest system []
   (testing "System can be built"
