@@ -7,7 +7,7 @@ Keechma implements a set of utilities that make it easier to develop predictable
 - **Application**: a combination of the routes, controllers, components and subscriptions that work together as a unit. Application state is stored in the internal atom.
 - **Routes**: a list of route patterns that describe how to transform the URL to data and data to the URL.
 - **Controller Manager**: internal part of the application that starts or stops controllers based on the current route params.
-- **Controllers**: Clojure records that implement the `controller/IController` protocol. They are managed by the controller manager. Controllers are responsible for the following:
+- **Controllers**: Clojure records that are managed by the controller manager. Controllers are responsible for the following:
     1. When started they (can) mutate the application state and load the data.
     2. When stopped they (can) mutate the application state and clean up the loaded data.
     3. When the user sends a command (e.g. by clicking on a button) it is routed to the appropriate controller which reacts to the command and mutates the application state accordingly.
