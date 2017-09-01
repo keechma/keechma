@@ -12,7 +12,7 @@ For each URL you can have multiple controllers running at once. Each controller 
 
 ## How controllers work
 
-Each controller is implemented as a Clojure record which implements the `controller/IController` protocol. This protocol defines multiple functions, but right now we're only interested in the `params` function.
+Controllers have their behavior defined with multimethods which can be overridden with specific implementations. They have a number of implemented functions but right now we're only interested in the `params` function.
 
 The `params` function receives the route params and returns a subset of the params needed for the controller to run or `nil`. The Controller Manager relies on the return value of the `params` function to decide if the controller should be started, stopped or left alone.
 
@@ -47,10 +47,10 @@ The routes could look like this:
 Since we need to show the list of notes on both URLs, the `NoteList` controller should just care about the `:page` param:
 
 ```clojure
-(defrecord NoteList[]
-    controller/IController
-    (params [_ route-params]
-        (get-in route-params [:data :page])))
+(defrecord NoteListController [])
+
+(defmethod controller/params NoteListController [_ route-params]
+  (get-in route-params [:data :page]))
 ```
 
 The `NoteList` controller's `params` function ensures that it will be running on each URL that has the `:page` param.
@@ -58,10 +58,10 @@ The `NoteList` controller's `params` function ensures that it will be running on
 The `NoteDetails` controller should run only when the `:note-id` param is present:
 
 ```clojure
-(defrecord NoteDetails[]
-    controller/IController
-    (params [_ route-params]
-        (get-in route-params [:data :note-id])))
+(defrecord NoteDetailsController [])
+
+(defmethod controller/params NoteDetailsController [_ route-params]
+  (get-in route-params [:data :note-id]))
 ```
 
 When the user is on the `/starred` page the `NoteDetails` controller will not be running. It will only run on the `/starred/1` URL.
@@ -87,10 +87,10 @@ Whenever the user performs an action - clicks on a button or submits a form - th
 Each controller can implement the `handler` function which receives the `in-chan` as an argument. User commands will be placed on that channel and the controller reacts accordingly.
 
 ```clojure
-(defrecord UserController []
-    controller/IController
-    (handler [_ app-db in-chan __]))
-    ;; Commands will be placed on the `in-chan` which is passed into the handler function
+(defrecord UserController [])
+
+(defmethod controller/handler UserController [_ app-db in-chan _])
+;; Commands will be placed on the `in-chan` which is passed into the handler function
 ```
 
 UI components don't define the `:topic` at the sending time, it is globally set for each UI component.
