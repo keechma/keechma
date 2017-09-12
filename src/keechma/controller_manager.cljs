@@ -1,23 +1,28 @@
 (ns keechma.controller-manager
   (:require [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.util :refer [dissoc-in]]
-            [keechma.controller :as controller :refer [SerializedController]])
+            [keechma.controller :as controller :refer [SerializedController]]
+            [keechma.reporter :as reporter])
   (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
-(defn ^:private send-command-to [reporter controller command-name args]
-  (if (= :route-changed command-name)
-    (do
-      (reporter :app :out :controller [(:name controller) command-name] args :info)
-      (reporter :controller :in (:name controller) [:lifecycle command-name] args :info))
-    (reporter :controller :in (:name controller) command-name args :info))
-  (put! (:in-chan controller) [command-name args])
-  controller)
+(defn ^:private send-command-to
+  ([reporter controller command-name args]
+   (send-command-to reporter controller command-name args (when (= :route-changed command-name) (reporter/cmd-info))))
+  ([reporter controller command-name args origin]
+   (let [cmd-info (reporter/with-origin origin)]
+     (if (= :route-changed command-name)
+       (do
+         (reporter :app :out :controller [(:name controller) command-name] args origin :info)
+         (reporter :controller :in (:name controller) [:keechma/lifecycle command-name] cmd-info :info))
+       (reporter :controller :in (:name controller) command-name args cmd-info :info))
+     (put! (:in-chan controller) [command-name args cmd-info])
+     controller)))
 
-(defn ^:private route-command-to-controller [reporter controllers command-name command-args]
+(defn ^:private route-command-to-controller [reporter controllers command-name command-args cmd-info]
   (let [[controller-name command-name] command-name
         controller (get controllers controller-name)]
     (if controller
-      (send-command-to reporter controller command-name command-args)
+      (send-command-to reporter controller command-name command-args cmd-info)
       (throw (ex-info "Trying to send command to a controller that is not running" {:controller controller-name :command command-name :args command-args})))))
 
 (defn report-running-controllers [app-db-atom]
@@ -50,9 +55,9 @@
            app-db app-db]
       (if-let [s (first stop)]
         (let [[topic params] s]
-          (reporter :app :out :controller [topic :stop] params :info)
+          (reporter :app :out :controller [topic :stop] params (reporter/cmd-info) :info)
           (let [controller (get running-controllers topic)
-                _ (reporter :controller :in topic [:lifecycle :stop] (:params controller) :info)
+                _ (reporter :controller :in topic [:lifecycle :stop] (:params controller) (reporter/cmd-info) :info)
                 new-app-db (-> (controller/stop controller (:params controller) app-db)
                                (dissoc-in [:internal :running-controllers topic]))]
             (close! (:in-chan controller))
@@ -65,8 +70,8 @@
          app-db app-db]
       (if-let [s (first start-or-wake)]
         (let [[topic params] s]
-          (reporter :app :out :controller [topic reporter-action] params :info)
-          (reporter :controller :in topic [:lifecycle reporter-action] params :info)
+          (reporter :app :out :controller [topic reporter-action] params (reporter/cmd-info) :info)
+          (reporter :controller :in topic [:keecmha/lifecycle reporter-action] params (reporter/cmd-info) :info)
           (let [controller (assoc (get controllers topic)
                                   :in-chan (chan)
                                   :out-chan commands-chan
@@ -86,8 +91,8 @@
 (defn call-handler-on-started-controllers [app-db-atom reporter start]
   (doseq [[topic _] start]
     (let [controller (get-in @app-db-atom [:internal :running-controllers topic])]
-      (reporter :app :out :controller [topic :handler] nil :info)
-      (reporter :controller :in topic [:lifecycle :handler] nil :info)
+      (reporter :app :out :controller [topic :handler] nil (reporter/cmd-info) :info)
+      (reporter :controller :in topic [:keechma/lifecycle :handler] nil (reporter/cmd-info) :info)
       (controller/handler controller app-db-atom (:in-chan controller) (:out-chan controller)))))
 
 (defn send-route-changed-to-surviving-controllers [app-db-atom reporter route-changed route-params]
@@ -96,7 +101,7 @@
       (send-command-to reporter controller :route-changed route-params))))
 
 (defn apply-route-change [reporter route-params app-db-atom commands-chan controllers]
-  (reporter :router :out nil :route-changed route-params :info)
+  (reporter :router :out nil :route-changed route-params (reporter/cmd-info) :info)
   (let [app-db @app-db-atom
         execution-plan (route-change-execution-plan route-params (get-in app-db [:internal :running-controllers]) controllers)
         {:keys [stop start wake route-changed]} execution-plan
@@ -108,7 +113,7 @@
                 (apply-wake-controllers reporter controllers commands-chan get-running wake)))
     (call-handler-on-started-controllers app-db-atom reporter (concat start wake))
     (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params))
-  (reporter :app :in nil :running-controllers (report-running-controllers app-db-atom) :info))
+  (reporter :app :in nil :running-controllers (report-running-controllers app-db-atom) (reporter/cmd-info) :info))
 
 (defn call-ssr-handler-on-started-controllers [app-db-atom reporter start ssr-handler-done-cb]
   (let [wait-chan (chan)
@@ -117,7 +122,7 @@
                      (if-let [s (first start)]
                        (let [[topic _] s
                              controller (get-in @app-db-atom [:internal :running-controllers topic])]
-                         (reporter :app :out :controller [topic :ssr-handler] nil :info)
+                         (reporter :app :out :controller [topic :ssr-handler] (reporter/cmd-info) :info)
                          (let [ret-val (controller/ssr-handler
                                         controller
                                         app-db-atom
@@ -147,9 +152,9 @@
     (reset! app-db-atom (apply-start-controllers app-db reporter controllers commands-chan get-running start))
     (go-loop []
       (when-let [command (<! commands-chan)]
-        (let [[command-name command-args] command
+        (let [[command-name command-args cmd-info] command
               running-controllers (get-in @app-db-atom [:internal :running-controllers])]
-          (route-command-to-controller reporter running-controllers command-name command-args)
+          (route-command-to-controller reporter running-controllers command-name command-args cmd-info)
           (recur))))
     (call-ssr-handler-on-started-controllers app-db-atom reporter start ssr-handler-done-cb)))
 
@@ -183,7 +188,7 @@
   "
 
   [route-chan commands-chan app-db-atom controllers reporter]
-  (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) :info)
+  (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) (reporter/cmd-info) :info)
   (apply-route-change reporter (:route @app-db-atom) app-db-atom commands-chan controllers)
   (let [stop-route-block (chan)
         stop-command-block (chan)
@@ -203,14 +208,14 @@
          (go-loop []
            (let [[val channel] (alts! [stop-command-block commands-chan])]
              (when-not (= channel stop-command-block)
-               (let [[command-name command-args] val 
+               (let [[command-name command-args cmd-info] val 
                      running-controllers (get-in @app-db-atom [:internal :running-controllers])]
                  (when (not (nil? command-name))
-                   (route-command-to-controller reporter running-controllers command-name command-args))
+                   (route-command-to-controller reporter running-controllers command-name command-args cmd-info))
                  (recur)))))]]
     {:running-chans running-chans
      :stop (fn []
-             (reporter :app :in nil :stop nil :info)
+             (reporter :app :in nil :stop nil (reporter/cmd-info) :info)
              (let [controllers (get-in @app-db-atom [:internal :running-controllers])]
                (close! stop-route-block)
                (close! stop-command-block)

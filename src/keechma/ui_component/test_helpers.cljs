@@ -10,8 +10,6 @@
   (command-log [this])
   (update-subscription! [this key data]))
 
-
-
 (defrecord MockComponent [state components]
   ui/IUIComponent
   (url [this params]
@@ -19,7 +17,9 @@
   (report [this name payload])
   (redirect [this params]
     (ui/send-command this :ui/redirect params))
-  (current-route [this] {})
+  (current-route [this]
+    (reaction
+     {:data (:route @state)}))
   (subscription [this key]
     (ui/subscription this key nil))
   (subscription [this key args]

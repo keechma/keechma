@@ -96,7 +96,7 @@
 
 (defn ^:private default-config [initial-data]
   {:name :application
-   :reporter (fn [app-name type direction topic name payload severity])
+   :reporter (fn [app-name type direction topic name payload cmd-info severity])
    :router :hashchange
    :routes-chan (chan)
    :commands-chan (chan)

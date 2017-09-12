@@ -5,7 +5,8 @@
             [keechma.test.controller]
             [keechma.test.controller-manager]
             [keechma.test.ui-component]
-            [keechma.test.ui-component.test-helpers]))
+            [keechma.test.ui-component.test-helpers]
+            [keechma.test.controller.test-helpers]))
 
 (enable-console-print!)
 
@@ -14,4 +15,5 @@
            'keechma.test.controller-manager
            'keechma.test.ui-component
            'keechma.test.ui-component.test-helpers
+           'keechma.test.controller.test-helpers
           )

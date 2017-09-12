@@ -3,7 +3,8 @@
             [com.stuartsierra.dependency :as dep]
             [keechma.util :as util]
             [clojure.string :refer [join]]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [keechma.reporter :as reporter]))
 
 (declare component->renderer)
 
@@ -13,7 +14,7 @@
   (url [this params]
     "Returns a URL based on the params. It will use the `:url-fn` that is injected
     from the outside to generate the URL based on the current app routes.")
-  (report [this name payload] [this name payload severity])
+  (report [this name payload] [this name payload path] [this name payload path severity])
   (redirect [this params]
     "Redirects page to the URL generated from params")
   (subscription [this key] [this key args]
@@ -35,10 +36,11 @@
     (let [url-fn (:url-fn this)]
       (url-fn params)))
   (report
-    ([this name payload] (report this name payload :info))
-    ([this name payload severity]
-     (let [reporter (or (:reporter this) (fn [_ _ _ _ _ _ _]))]
-       (reporter (:name this) [(:topic this) name] payload severity))))
+    ([this name payload] (report this name payload (reporter/cmd-info) :info))
+    ([this name payload cmd-info] (report this name payload cmd-info :info))
+    ([this name payload cmd-info severity]
+     (let [reporter (or (:reporter this) (fn [_ _ _ _ _ _ _ _]))]
+       (reporter (:name this) [(:topic this) name] payload cmd-info severity))))
   (redirect [this params]
     ((:redirect-fn this) params))
   (current-route [this]
@@ -57,9 +59,10 @@
     ([this command]
      (send-command this command nil))
     ([this command args]
-     (report this command args)
-     (put! (:commands-chan this) [[(:topic this) command] args])
-     nil))
+     (let [cmd-info (reporter/cmd-info)]
+       (report this command args cmd-info)
+       (put! (:commands-chan this) [[(:topic this) command] args cmd-info])
+       nil)))
   (renderer [this]
     (let [child-renderers (reduce-kv (fn [c k v]
                                        (assoc c k (component->renderer this v)))

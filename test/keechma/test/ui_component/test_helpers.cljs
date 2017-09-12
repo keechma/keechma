@@ -115,3 +115,17 @@
               (s/satisfies-predicate? el #(= "Subtitle" (.text %)))
               (unmount))))
 
+(defn custom-route-data-renderer [ctx]
+  [:h1 "Hello " (get-in @(ui/current-route ctx) [:data :username])])
+
+(def custom-route-data-component
+  (ui/constructor
+   {:renderer custom-route-data-renderer}))
+
+(deftest custom-route-data
+  (let [[c unmount] (make-container)
+        ctx (ui-th/render c custom-route-data-component
+                          {:route {:username "Retro"}})]
+    (synasync [el]
+              (s/satisfies-predicate? "h1" #(= "Hello Retro"))
+              (unmount))))

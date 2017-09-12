@@ -94,9 +94,9 @@
     (async done
            (go
              (sim/click button-node nil)
-             (is (= [[:inner :inner-command] "inner-arg"] (<! commands-chan)))
+             (is (= [[:inner :inner-command] "inner-arg"] (take 2 (<! commands-chan))))
              (sim/click submit-node nil)
-             (is (= [[:outer :outer-command] "outer-arg"] (<! commands-chan)))
+             (is (= [[:outer :outer-command] "outer-arg"] (take 2 (<! commands-chan))))
              (unmount)
              (done)))))
 
