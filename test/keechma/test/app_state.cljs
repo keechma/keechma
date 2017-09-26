@@ -199,14 +199,14 @@
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (rn-router/navigate! :push {:key :foo})
              (<! (timeout 10))
              (is (= {:index 1
                      :key :foo
                      :routes [{:key :init}
                               {:key :foo}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (rn-router/navigate! :push {:key :bar})
              (<! (timeout 10))
              (is (= {:index 2
@@ -214,26 +214,26 @@
                      :routes [{:key :init}
                               {:key :foo}
                               {:key :bar}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (rn-router/navigate! :pop)
              (<! (timeout 10))
              (is (= {:index 1
                      :key :foo
                      :routes [{:key :init}
                               {:key :foo}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (rn-router/navigate! :home)
              (<! (timeout 10))
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (rn-router/navigate! :pop)
              (<! (timeout 10))
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}
-                    @route-atom))
+                    (:data @route-atom)))
              (done)))))
 
 

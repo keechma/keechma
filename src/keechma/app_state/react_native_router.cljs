@@ -47,8 +47,8 @@
           watch-id (:watch-id this)]
       (add-watch route-atom watch-id
                  (fn [_ _ _ route-data]
-                   (put! routes-chan route-data)))
-      (swap! app-db assoc :route @route-atom)
+                   (put! routes-chan {:data route-data})))
+      (swap! app-db assoc-in [:route :data] @route-atom)
       this))
   (stop! [this]
     (remove-watch route-atom (:watch-id this)))
