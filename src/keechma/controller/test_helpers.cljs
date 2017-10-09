@@ -40,7 +40,8 @@
        (let [in-chan (chan)
              out-chan (chan)
              in-mult (mult in-chan)
-             in-tap (tap in-mult (chan))
+             in-tap-1 (tap in-mult (chan))
+             in-tap-2 (tap in-mult (chan))
              inited (assoc controller
                            :in-chan in-chan
                            :out-chan out-chan
@@ -57,18 +58,13 @@
                                                 :log log-atom
                                                 :app-db app-db-atom})]
          
-         (log-chan log-atom (tap in-mult (chan)) :in-chan)
+         (log-chan log-atom in-tap-2 :in-chan)
          (log-chan log-atom out-chan :out-chan)
          (log-app-db-changes log-atom app-db-atom)
 
          (reset! app-db-atom (controller/start inited params @app-db-atom))
-         (controller/handler inited app-db-atom in-tap out-chan)
+         (controller/handler inited app-db-atom in-tap-1 out-chan)
          inited)))))
-
-(defn send-command!
-  ([ctrl command])
-  ([ctrl command payload]
-   (controller/execute ctrl command payload)))
 
 (defn stop! [controller]
   (when controller

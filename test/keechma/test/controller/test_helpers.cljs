@@ -179,3 +179,5 @@
              (<! (timeout 1))
              (is (= {:foo 2} (controller-th/app-db ctrl)))
              (done)))))
+
+
