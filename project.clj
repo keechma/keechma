@@ -11,7 +11,7 @@
                  [cljsjs/react-dom-server "15.6.1-0" :exclusions [cljsjs/react]]
                  [org.clojars.mihaelkonjevic/cljs-react-test "0.1.5" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
-                 [funcool/cuerdas "2.0.1"]
+                 [funcool/cuerdas "2.0.4"]
                  [lein-doo "0.1.7"]
                  [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]
