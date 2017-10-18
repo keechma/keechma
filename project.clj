@@ -18,7 +18,7 @@
                  [keechma/router "0.1.0"]
                  [keechma/entitydb "0.1.0"]
                  [com.cognitect/transit-cljs "0.8.239"]
-                 [syntest "0.1.0-SNAPSHOT"]]
+                 [syntest "0.1.0"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-figwheel "0.5.8"]
