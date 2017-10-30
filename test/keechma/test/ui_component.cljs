@@ -8,7 +8,7 @@
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.ui-component :as ui]
             [keechma.test.util :refer [make-container]])
-  (:require-macros [cljs.core.async.macros :as m :refer [go]]))
+  (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
 (deftest system []
   (testing "System can be built"
@@ -127,4 +127,35 @@
         renderer (ui/renderer (assoc system :commands-chan commands-chan))
         [c unmount] (make-container)]
     (reagent/render-component [renderer] c)
+    (close! commands-chan)
     (unmount)))
+
+
+(deftest send-command-with-and-without-topic []
+  (let [commands (atom [])
+        commands-chan (chan)
+        component (ui/constructor
+                   {:topic :foo
+                    :renderer
+                    (fn [ctx]
+                      (ui/send-command ctx :some-command)
+                      (ui/send-command ctx [:bar :some-command])
+                      [:div "Test"])})
+        system (ui/system {:main component})
+        renderer (ui/renderer (assoc system :commands-chan commands-chan))
+        [c unmount] (make-container)]
+    
+    (async done
+           (reagent/render-component [renderer] c)
+           (go-loop []
+             (let [cmd (<! commands-chan)]
+               (swap! commands conj (first cmd))
+               (if (not= 2 (count @commands))
+                 (recur)
+                 (do
+                   (is (= @commands
+                          [[:foo :some-command]
+                           [:bar :some-command]]))
+                   (close! commands-chan)
+                   (unmount)
+                   (done))))))))

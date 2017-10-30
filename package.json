@@ -13,6 +13,6 @@
   "dependencies": {
     "browser-resolve": "^1.11.2",
     "module-deps": "^4.1.1",
-    "resolve": "^1.4.0"
+    "resolve": "^1.5.0"
   }
 }

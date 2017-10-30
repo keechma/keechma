@@ -61,7 +61,9 @@
     ([this command args]
      (let [cmd-info (reporter/cmd-info)]
        (report this command args cmd-info)
-       (put! (:commands-chan this) [[(:topic this) command] args cmd-info])
+       (if (vector? command)
+         (put! (:commands-chan this) [command args cmd-info])
+         (put! (:commands-chan this) [[(:topic this) command] args cmd-info]))
        nil)))
   (renderer [this]
     (let [child-renderers (reduce-kv (fn [c k v]
@@ -74,7 +76,9 @@
                           (-> this
                               (assoc :subscriptions subscriptions)
                               (assoc :components child-renderers)))
-        {:name (:name this)}))))
+        {:name (:name this)
+         ::renderer (:renderer this)
+         ::context this}))))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
