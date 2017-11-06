@@ -991,7 +991,7 @@
 
 (defmethod controller/params ControllerReturningFalseFromParams [this route-params] false)
 
-(deftest controller-returning-fasle-from-params
+(deftest controller-returning-false-from-params
   (let [[c unmount] (make-container)
         app-renderer (fn [ctx] [:div])
         app {:controllers {:main (->ControllerReturningFalseFromParams)}

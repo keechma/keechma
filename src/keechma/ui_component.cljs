@@ -6,6 +6,9 @@
             [clojure.set :as set]
             [keechma.reporter :as reporter]))
 
+(defn make-ex [msg]
+  (ex-info msg {:type ::error}))
+
 (declare component->renderer)
 
 (defprotocol IUIComponent
@@ -51,10 +54,13 @@
     ([this key args]
      (let [subscription (get-in this [:subscriptions key])]
        (if (nil? subscription)
-         (throw (js/Error (str "Can't resolve the subscription with key: " key)))
-         (apply subscription args)))))
+         (throw (make-ex (str "Can't resolve the subscription with key: " key)))
+         (apply subscription (into [(:app-db this)] args))))))
   (component [this key]
-    (get-in this [:components key]))
+    (let [component (get-in this [:components key])]
+      (if (nil? component)
+        (throw (make-ex (str "Can't resolve the component with key: " key)))
+        component)))
   (send-command
     ([this command]
      (send-command this command nil))
@@ -69,16 +75,11 @@
     (let [child-renderers (reduce-kv (fn [c k v]
                                        (assoc c k (component->renderer this v)))
                                      {} (:components this))
-          subscriptions (reduce-kv (fn [s k v]
-                                     (assoc s k (partial v (:app-db this))))
-                                   {} (:subscriptions this))]
-      (with-meta (partial (:renderer this)
-                          (-> this
-                              (assoc :subscriptions subscriptions)
-                              (assoc :components child-renderers)))
+          renderer-context (assoc this :components child-renderers)]
+      (with-meta (partial (:renderer this) renderer-context)
         {:name (:name this)
          ::renderer (:renderer this)
-         ::context this}))))
+         ::context renderer-context}))))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
@@ -88,7 +89,7 @@
                (if-not (fn? v)
                  (let [component-deps (:component-deps v)]
                    (if (util/in? component-deps :main)
-                     (throw (js/Error "Nothing can depend on the :main component!"))
+                     (throw (make-ex "Nothing can depend on the :main component!"))
                      (reduce #(dep/depend %1 k %2) graph component-deps)))
                  graph)) (dep/graph) components))
 
@@ -105,7 +106,7 @@
       (let [components (select-keys system dep-keys)
             missing-deps (missing-component-deps components)]  
         (if-not (empty? missing-deps)
-          (throw (js/Error (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
+          (throw (make-ex (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
           (assoc component
                  :components components
                  :component-deps [])))
@@ -155,7 +156,7 @@
   (reduce (fn [c dep]
             (let [sub (get subscriptions dep)]
               (if (nil? sub)
-                (throw (js/Error (str "Missing subscription: " dep)))
+                (throw (make-ex (str "Missing subscription: " dep)))
                 (resolve-subscription-dep c dep sub))))
           component (or (:subscription-deps component) [])))
 
@@ -242,7 +243,7 @@
   ([components] (system components {}))
   ([components subscriptions]
    (if (nil? (:main components))
-     (throw (js/Error "System must have a :main component!"))
+     (throw (make-ex "System must have a :main component!"))
      (let [graph (component-dep-graph components)
            sorted-keys (dep/topo-sort graph)
            components-with-resolved-deps (resolve-subscriptions (assoc-name components) subscriptions)]

@@ -201,11 +201,12 @@
 (defn add-sub-cache [cache [key sub]]
   [key
    (fn [app-db-atom & args]
-     (let [cached (get @cache [key args])]
+     (let [app-db-atom-hash (hash app-db-atom)
+           cached (get @cache [app-db-atom-hash key args])]
        (if cached
          cached
          (let [sub-reaction (apply sub (into [app-db-atom] (vec args)))]
-           (swap! cache assoc [key args] sub-reaction)
+           (swap! cache assoc [app-db-atom-hash key args] sub-reaction)
            sub-reaction))))])
 
 (defn ^:private start-subs-cache [state]
