@@ -12,11 +12,14 @@
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
 
+(defn default-route-processor [route _] route)
+
 (defrecord AppState
     [name
      reporter
      router
      routes-chan
+     route-processor
      commands-chan
      app-db
      subscriptions-cache
@@ -99,6 +102,7 @@
    :reporter (fn [app-name type direction topic name payload cmd-info severity])
    :router :hashchange
    :routes-chan (chan)
+   :route-processor default-route-processor
    :commands-chan (chan)
    :app-db (app-db initial-data)
    :subscriptions-cache (atom {})
@@ -184,6 +188,7 @@
 
 (defn ^:private start-controllers [state]
   (let [router (:router state)
+        route-processor (:route-processor state)
         reporter (:reporter state)
         context (:context state)
         controllers (-> (:controllers state)
@@ -193,7 +198,7 @@
         routes-chan (:routes-chan state)
         commands-chan (:commands-chan state)
         app-db (:app-db state)
-        manager (controller-manager/start routes-chan commands-chan app-db controllers reporter)]
+        manager (controller-manager/start routes-chan route-processor commands-chan app-db controllers reporter)]
     (add-stop-fn state (fn [s]
                          ((:stop manager))
                          s))))

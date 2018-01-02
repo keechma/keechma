@@ -166,9 +166,11 @@
   `start` function receives the following parameters:
   
   - `route-chan` - Route changes will communicated through this channel
+  - `route-processor` - Function that will be called on every route change. It can be used to process the route before it's written into app-db
   - `commands-chan` - User (UI) commands will be sent through this channel
   - `app-db` - application state atom
   - `controllers` map of controllers registered for the app
+  - `reporter` - internal reporter function
 
   Each time when the new route data comes through the `route-chan` controller
   manager will do the following:
@@ -187,7 +189,7 @@
   the name of the command should look like this `[:controlnler-key :command-name]`. Controller manager will route the `:command-name` command to the appropriate controller based on the `:controller-key`. Controller key is the key under which the controller was registered in the `controllers` argument.
   "
 
-  [route-chan commands-chan app-db-atom controllers reporter]
+  [route-chan route-processor commands-chan app-db-atom controllers reporter]
   (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) (reporter/cmd-info) :info)
   (apply-route-change reporter (:route @app-db-atom) app-db-atom commands-chan controllers)
   (let [stop-route-block (chan)
@@ -201,7 +203,7 @@
              ;;   - send "route-changed" command to controllers that were already running 
            (let [[val channel] (alts! [stop-route-block route-chan])]
              (when (and (not= channel stop-route-block) val)
-               (let [route-params val]
+               (let [route-params (route-processor val @app-db-atom)]
                  (when (not= route-params (:route @app-db-atom))
                    (apply-route-change reporter route-params app-db-atom commands-chan controllers))
                  (recur)))))
