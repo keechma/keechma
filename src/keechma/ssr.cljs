@@ -9,7 +9,8 @@
 (defn start-router! [state current-url]
   (let [routes (:routes state) 
         routes-chan (:routes-chan state)
-        router (ssr-router/constructor current-url routes routes-chan state)]
+        route-processor (:route-processor state)
+        router (ssr-router/constructor current-url routes route-processor routes-chan state)]
     (assoc state :router router)))
 
 (defn prepare-config [config url]
@@ -20,6 +21,7 @@
 
 (defn start-controllers [state done-cb]
   (let [router (:router state)
+        route-processor (:route-processor state)
         reporter (:reporter state)
         context (:context state)
         controllers (-> (:controllers state)

@@ -191,7 +191,7 @@
 
   [route-chan route-processor commands-chan app-db-atom controllers reporter]
   (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) (reporter/cmd-info) :info)
-  (apply-route-change reporter (:route @app-db-atom) app-db-atom commands-chan controllers)
+  (apply-route-change reporter (route-processor (:route @app-db-atom)) app-db-atom commands-chan controllers)
   (let [stop-route-block (chan)
         stop-command-block (chan)
         running-chans

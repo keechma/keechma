@@ -11,7 +11,8 @@
             [keechma.app-state.react-native-router :as rn-router]
             [keechma.app-state.history-router :as history-router]
             [keechma.ssr :as ssr]
-            [keechma.test.util :refer [make-container]])
+            [keechma.test.util :refer [make-container]]
+            [clojure.string :as str])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -29,6 +30,30 @@
              (is (= (.-innerText c) "HELLO WORLD"))
              (app-state/stop! app (fn []
                                     (unmount)
+                                    (done)))))))
+
+(deftest route-processor []  
+  (let [[c unmount] (make-container)
+        current-hash (.-hash (.-location js/window))
+        _ (set! (.-hash (.-location js/window)) "!page1")
+        app (app-state/start!
+             {:html-element c
+              :routes [":page"]
+              :route-processor (fn [route]
+                                 (update-in route [:data :page] #(str/upper-case (or % ""))))
+              :components {:main {:renderer (fn [_]
+                                              [:div "HELLO WORLD"])}}})
+        app-db-atom (:app-db app)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= "PAGE1" (get-in @app-db-atom [:route :data :page])))
+             (set! (.-hash (.-location js/window)) "!page2")
+             (<! (timeout 20))
+             (is (= "PAGE2" (get-in @app-db-atom [:route :data :page])))
+             (app-state/stop! app (fn []
+                                    (unmount)
+                                    (set! (.-hash (.-location js/window)) current-hash)
                                     (done)))))))
 
 (defrecord AppStartController [inner-app])
@@ -899,6 +924,39 @@
                  (app-state/stop! app)
                  (unmount)
                  (.pushState js/history nil "", current-href)
+                 (done)))))))
+
+(deftest basic-ssr-with-route-processor
+  (let [[c unmount] (make-container)
+         current-href (.-href js/location)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :history
+                        :route-processor (fn [route]
+                                           (update-in route [:data :page] #(str/upper-case (or % ""))))
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:a {:href (ui/url ctx {:page "page-name2" :foo "Bar"})}
+                                               [:span.link-el "Link"]])}}}]
+    (async done
+           (go
+             (let [{:keys [html app-state]} (<! (ssr-to-chan app-definition "/page-name1"))]
+               (is (= (get-in (app-state/deserialize-app-state {} app-state) [:app-db :route :data :page])
+                      "PAGE-NAME1"))
+               (set! (.-innerHTML c) html)
+               (is (= "Link" (.-innerText c)))
+               (let [app (app-state/start! app-definition)]
+                 (<! (timeout 20))
+                 (is (= "Link" (.-innerText c)))
+                 (sim/click (sel1 c [:.link-el]) {:button 0})
+                 (<! (timeout 20))
+                 (is (= (get-in @(:app-db app) [:route :data])
+                        {:foo "Bar"
+                         :page "PAGE-NAME2"}))
+                 (app-state/stop! app)
+                 (unmount)
+                 (.pushState js/history nil "" current-href)
                  (done)))))))
 
 (deftest multiple-apps-ssr []
