@@ -23,7 +23,8 @@
         controller (get controllers controller-name)]
     (if controller
       (send-command-to reporter controller command-name command-args cmd-info)
-      (throw (ex-info "Trying to send command to a controller that is not running" {:controller controller-name :command command-name :args command-args})))))
+      (when (.-DEBUG js/goog)
+        (.warn js/console "Trying to send command to a controller that is not running" {:controller controller-name :command command-name :args command-args})))))
 
 (defn report-running-controllers [app-db-atom]
   (let [running-controllers (get-in @app-db-atom [:internal :running-controllers])]
