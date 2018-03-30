@@ -3,20 +3,18 @@
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha17"]
-                 [org.clojure/clojurescript "1.9.854"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
+                 [org.clojure/clojurescript "1.10.238"]
                  [reagent "0.7.0" :exclusions [cljsjs/react cljsjs/react-dom]]
                  [cljsjs/react-with-addons "15.6.1-0"]
                  [cljsjs/react-dom "15.6.1-0" :exclusions [cljsjs/react]]
                  [cljsjs/react-dom-server "15.6.1-0" :exclusions [cljsjs/react]]
                  [org.clojars.mihaelkonjevic/cljs-react-test "0.1.5" :exclusions [cljsjs/react-with-addons]]
                  [prismatic/dommy "1.1.0"]
-                 [funcool/cuerdas "2.0.4"]
                  [lein-doo "0.1.7"]
                  [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]
-                 [keechma/router "0.1.0"]
-                 [keechma/entitydb "0.1.0"]
+                 [keechma/router "0.1.1"]
                  [com.cognitect/transit-cljs "0.8.239"]
                  [syntest "0.1.0"]]
 
@@ -57,7 +55,7 @@
                            :optimizations :none
                            :main keechma.test.core
                            :install-deps true
-                           :npm-deps {:syn "0.10.0"
+                           :npm-deps {;;:syn "0.10.0"
                                       :karma "^0.13.16"
                                       :karma-chrome-launcher "^0.2.2"
                                       :karma-cljs-test "^0.1.0"}}}]}
