@@ -65,7 +65,7 @@
         app-db))))
 
 (defn apply-start-or-wake-controllers
-  [action reporter-action app-db reporter controllers commands-chan get-running start-or-wake]
+  [action reporter-action app-db reporter controllers commands-chan get-running active-topics start-or-wake]
   (loop [start-or-wake start-or-wake
          app-db app-db]
       (if-let [s (first start-or-wake)]
@@ -79,7 +79,8 @@
                                   :route-params (:route app-db)
                                   :name topic
                                   :reporter reporter
-                                  :running (partial get-running topic))
+                                  :running (partial get-running topic)
+                                  :active-topics active-topics)
                 new-app-db (-> (action controller params app-db)
                                (assoc-in [:internal :running-controllers topic] controller))]
             (recur (rest start-or-wake) new-app-db)))
@@ -105,12 +106,13 @@
   (let [app-db @app-db-atom
         execution-plan (route-change-execution-plan route-params (get-in app-db [:internal :running-controllers]) controllers)
         {:keys [stop start wake route-changed]} execution-plan
-        get-running (fn [topic] (get-in @app-db-atom [:internal :running-controllers topic]))]
+        get-running (fn [topic] (get-in @app-db-atom [:internal :running-controllers topic]))
+        active-topics #(keys (get-in @app-db-atom [:internal :running-controllers]))]
     (reset! app-db-atom
             (-> (assoc app-db :route route-params)
                 (apply-stop-controllers reporter stop)
-                (apply-start-controllers reporter controllers commands-chan get-running start)
-                (apply-wake-controllers reporter controllers commands-chan get-running wake)))
+                (apply-start-controllers reporter controllers commands-chan get-running active-topics start)
+                (apply-wake-controllers reporter controllers commands-chan get-running active-topics wake)))
     (call-handler-on-started-controllers app-db-atom reporter (concat start wake))
     (send-route-changed-to-surviving-controllers app-db-atom reporter route-changed route-params))
   (reporter :app :in nil :running-controllers (report-running-controllers app-db-atom) (reporter/cmd-info) :info))
@@ -146,10 +148,11 @@
         execution-plan (route-change-execution-plan route-params {} controllers)
         {:keys [start]} execution-plan
         get-running (fn [topic] (get-in @app-db-atom [:internal :running-controllers topic]))
+        active-topics #(keys (get-in @app-db-atom [:internal :running-controllers]))
         ssr-handler-done-cb (fn []
                               (close! commands-chan)
                               (done-cb))]
-    (reset! app-db-atom (apply-start-controllers app-db reporter controllers commands-chan get-running start))
+    (reset! app-db-atom (apply-start-controllers app-db reporter controllers commands-chan get-running active-topics start))
     (go-loop []
       (when-let [command (<! commands-chan)]
         (let [[command-name command-args cmd-info] command

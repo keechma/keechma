@@ -1061,3 +1061,64 @@
              (<! (timeout 20))
              (unmount)
              (done)))))
+
+(defn store-broadcast-message [controller app-db-atom payload]
+  (swap! app-db-atom assoc-in [:kv (:name controller)] payload))
+
+(defrecord BroadcastConsumerControllerA [])
+(defmethod controller/params BroadcastConsumerControllerA [_ _] true)
+
+(defmethod controller/handler BroadcastConsumerControllerA [this app-db-atom in-chan _]
+  (controller/dispatcher
+   app-db-atom
+   in-chan
+   {::broadcast (fn [app-db-atom args] (store-broadcast-message this app-db-atom args))}))
+
+(defrecord BroadcastConsumerControllerB [])
+(defmethod controller/params BroadcastConsumerControllerB [_ _] true)
+
+(defmethod controller/handler BroadcastConsumerControllerB [this app-db-atom in-chan _]
+  (controller/dispatcher
+   app-db-atom
+   in-chan
+   {::broadcast (fn [app-db-atom args] (store-broadcast-message this app-db-atom args))}))
+
+(defrecord BroadcastConsumerControllerC [])
+(defmethod controller/params BroadcastConsumerControllerC [_ _] true)
+
+(defmethod controller/handler BroadcastConsumerControllerC [this app-db-atom in-chan _]
+  (controller/dispatcher
+   app-db-atom
+   in-chan
+   {::broadcast (fn [app-db-atom args] (store-broadcast-message this app-db-atom args))}))
+
+(defrecord BroadcastingController [])
+(defmethod controller/params BroadcastingController [_ _] true)
+
+(defmethod controller/handler BroadcastingController [this app-db-atom in-chan _]
+  (controller/broadcast this ::broadcast ::payload)
+  (controller/dispatcher
+   app-db-atom
+   in-chan
+   {::broadcast (fn [app-db-atom args] (store-broadcast-message this app-db-atom args))}))
+
+
+(deftest controller-broadcasting
+  (let [[c unmount] (make-container)
+        app-renderer (fn [ctx] [:div])
+        app {:controllers {:a (->BroadcastConsumerControllerA)
+                           :b (->BroadcastConsumerControllerA)
+                           :c (->BroadcastConsumerControllerA)
+                           :broadcaster (->BroadcastingController)}
+             :html-element c
+             :components {:main {:renderer app-renderer}}}]
+    (async done
+           (go
+             (let [started-app (app-state/start! app)]
+               (<! (timeout 20))
+               (is (= {:a ::payload
+                       :b ::payload
+                       :c ::payload}
+                      (:kv @(:app-db started-app))))
+               (unmount)
+               (done))))))

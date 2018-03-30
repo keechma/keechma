@@ -66,10 +66,10 @@
   to other functions. This functions provides a shortcut for that case.
 
   ```clojure
-  (defrecord Controller []
-    IController
-    (handler [_ app-db-atom in-chan _]
-      (dispatcher app-db-atom in-chan {:command-name some-fn})))
+  (defrecord Controller [])
+    
+  (defmethod handler Controller [_ app-db-atom in-chan _]
+    (dispatcher app-db-atom in-chan {:command-name some-fn}))
   ```"
   [app-db-atom in-chan actions]
   (go (loop []
@@ -122,6 +122,9 @@
 (defmulti send-command
   "Sends a command to another controller"
   record-type)
+(defmulti broadcast
+  "Sends a command to all other running controllers"
+  record-type)
 (defmulti is-running?
   "Returns `true` if this controller is still running. You can use this if you have some
   kind of async action, and you want to make sure that the controller is still running 
@@ -130,6 +133,7 @@
 (defmulti redirect
   "Redirects the page to the URL based on the params."
   record-type)
+
 
 (defmethod params :default [controller route-params] route-params)
 (defmethod start :default [controller params app-db] app-db)
@@ -167,6 +171,17 @@
      (report controller :out command-name args cmd-info)
      (put! out-chan [command-name args cmd-info])
      controller)))
+(defmethod broadcast :default
+  ([controller command-name]
+   (broadcast controller command-name nil nil))
+  ([controller command-name args]
+   (broadcast controller command-name args nil))
+  ([controller command-name args origin]
+   (let [active-topics ((:active-topics controller))
+         current-topic (:name controller)]
+     (doseq [t active-topics]
+       (when (not= t current-topic)
+         (send-command controller [t command-name] args origin))))))
 (defmethod is-running? :default [controller]
   (= controller ((:running controller))))
 (defmethod redirect :default [controller params]
