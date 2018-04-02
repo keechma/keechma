@@ -110,7 +110,9 @@
    :controllers {}
    :context {}
    :html-element nil
-   :stop-fns []})
+   :stop-fns []
+   :on {:stop []
+        :start []}})
 
 (defn ^:private process-config [config]
   (let [name [(:name config) (keyword (gensym "v"))]
@@ -236,6 +238,10 @@
       (nil? initial-data) {}
       :else initial-data)))
 
+(defn run-lifecycle-fns [lifecycle config]
+  (let [fns (get-in config [:on lifecycle])]
+    (reduce (fn [c f] (f c)) config fns)))
+
 (defn start!
   "Starts the application. It receives the application config `map` as the first argument.
   It receives `boolean` `should-mount?` as the second element. Default value for `should-mount?`
@@ -283,13 +289,15 @@
   ([config should-mount?]
    (let [initial-data (get-initial-data config)
          config (map->AppState (process-config (merge (default-config initial-data) config)))
-         mount (if should-mount? mount-to-element! identity)]
+         mount (if should-mount? mount-to-element! identity)
+         lifecycle-runner (partial run-lifecycle-fns :start)]
      (-> config
          (start-subs-cache)
          (start-router!)
          (start-controllers)
          (resolve-main-component)
-         (mount)))))
+         (mount)
+         (lifecycle-runner)))))
 
 (defn stop!
   "Stops the application. `stop!` function receives the following as the arguments:
@@ -307,12 +315,13 @@
   4. Application is unmounted and removed from the DOM
   "
   ([config]
-   (stop! config (fn [])))
+   (stop! config identity))
   ([config done]
-   (let [routes-chan (:routes-chan config)
-         commands-chan (:commands-chan config)]
-     (go
-       (doseq [stop-fn (:stop-fns config)] (stop-fn config))
+   (go
+     (doseq [stop-fn (:stop-fns config)] (stop-fn config))
+     (let [config (run-lifecycle-fns :stop config)
+           routes-chan (:routes-chan config)
+           commands-chan (:commands-chan config)]
        (close! commands-chan)
        (close! routes-chan)
-       (done)))))
+       (done config)))))

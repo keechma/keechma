@@ -10,6 +10,7 @@
             [keechma.ui-component :as ui]
             [keechma.app-state.react-native-router :as rn-router]
             [keechma.app-state.history-router :as history-router]
+            [keechma.app-state.core :refer [reg-on-start reg-on-stop]]
             [keechma.ssr :as ssr]
             [keechma.test.util :refer [make-container]]
             [clojure.string :as str])
@@ -1122,3 +1123,49 @@
                       (:kv @(:app-db started-app))))
                (unmount)
                (done))))))
+
+(deftest lifecycle-fns
+  (let [[c unmount] (make-container)
+        app-renderer (fn [ctx] [:div])
+        app {:html-element c
+             :components {:main {:renderer app-renderer}}
+             :on {:start [(fn [c]
+                            (assoc-in c [:lifecycle :log] [:start-1]))
+                          (fn [c]
+                            (update-in c [:lifecycle :log] #(conj % :start-2)))]
+                  :stop [(fn [c]
+                            (update-in c [:lifecycle :log] #(conj % :stop-1)))
+                         (fn [c]
+                           (update-in c [:lifecycle :log] #(conj % :stop-2)))]}}]
+    (async done
+           (go
+             (let [started-app (app-state/start! app)]
+               (app-state/stop! started-app
+                                (fn [config]
+                                  (is (= [:start-1 :start-2 :stop-1 :stop-2 3])
+                                      (get-in config [:lifecycle :log]))
+                                  (unmount)
+                                  (done))))))))
+
+
+(deftest lifecycle-fns-with-helpers
+  (let [[c unmount] (make-container)
+        app-renderer (fn [ctx] [:div])
+        app (-> {:html-element c
+                 :components {:main {:renderer app-renderer}}}
+                (reg-on-start (fn [c] (assoc-in c [:lifecycle :log] [:start-1])))
+                (reg-on-start (fn [c]
+                                (update-in c [:lifecycle :log] #(conj % :start-2))))
+                (reg-on-stop (fn [c]
+                               (update-in c [:lifecycle :log] #(conj % :stop-1))))
+                (reg-on-stop (fn [c]
+                               (update-in c [:lifecycle :log] #(conj % :stop-2)))))]
+    (async done
+           (go
+             (let [started-app (app-state/start! app)]
+               (app-state/stop! started-app
+                                (fn [config]
+                                  (is (= [:start-1 :start-2 :stop-1 :stop-2 3])
+                                      (get-in config [:lifecycle :log]))
+                                  (unmount)
+                                  (done))))))))
