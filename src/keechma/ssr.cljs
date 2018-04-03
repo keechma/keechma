@@ -42,10 +42,14 @@
                  (app-state/resolve-main-component)
                  (render-to-string))]
     (done-cb {:html html
-              :app-state (app-state/serialize-app-state transit-writers state)})))
+              :app-state (app-state/serialize-app-state
+                          transit-writers
+                          (app-state/run-lifecycle-fns :stop state))})))
 
 (defn render
   ([config url done-cb] (render config url {} done-cb))
   ([config url transit-writers done-cb]
    (let [config (prepare-config config url)]
-     (start-controllers config (partial controllers-done done-cb transit-writers)))))
+     (start-controllers
+      (app-state/run-lifecycle-fns :start config)
+      (partial controllers-done done-cb transit-writers)))))

@@ -1142,8 +1142,8 @@
              (let [started-app (app-state/start! app)]
                (app-state/stop! started-app
                                 (fn [config]
-                                  (is (= [:start-1 :start-2 :stop-1 :stop-2 3])
-                                      (get-in config [:lifecycle :log]))
+                                  (is (= [:start-1 :start-2 :stop-1 :stop-2]
+                                         (get-in config [:lifecycle :log])))
                                   (unmount)
                                   (done))))))))
 
@@ -1165,7 +1165,49 @@
              (let [started-app (app-state/start! app)]
                (app-state/stop! started-app
                                 (fn [config]
-                                  (is (= [:start-1 :start-2 :stop-1 :stop-2 3])
-                                      (get-in config [:lifecycle :log]))
+                                  (is (= [:start-1 :start-2 :stop-1 :stop-2]
+                                         (get-in config [:lifecycle :log])))
                                   (unmount)
                                   (done))))))))
+
+(deftest lifecycle-fns-ssr
+  (let [[c unmount] (make-container)
+        app-renderer (fn [ctx] [:div])
+        app {:html-element c
+             :router :history
+             :components {:main {:renderer app-renderer}}
+             :on {:start [(fn [c]
+                            (swap! (:app-db c) assoc-in [:lifecycle :log] [:start-1])
+                            c)
+                          (fn [c]
+                            (swap! (:app-db c) update-in [:lifecycle :log] #(conj % :start-2))
+                            c)]
+                  :stop [(fn [c]
+                           (swap! (:app-db c) update-in [:lifecycle :log] #(conj % :stop-1))
+                           c)
+                         (fn [c]
+                           (swap! (:app-db c) update-in [:lifecycle :log] #(conj % :stop-2))
+                           c)]}}]
+
+    (async done
+           (go
+             (let [{:keys [html app-state]} (<! (ssr-to-chan app ""))]
+               (set! (.-innerHTML c) html)
+
+               (is (= [:start-1 :start-2 :stop-1 :stop-2]
+                      (get-in (app-state/deserialize-app-state {} app-state)
+                              [:app-db :lifecycle :log])))
+               
+               (let [started-app
+                     (app-state/start!
+                      (assoc app :initial-data
+                             (app-state/deserialize-app-state {} app-state)))]
+                 
+                 (app-state/stop!
+                  started-app
+                  (fn [config]
+                    (let [app-db (deref (:app-db config))]
+                      (is (= [:start-1 :start-2 :stop-1 :stop-2] 
+                             (get-in app-db [:lifecycle :log]))))
+                    (unmount)
+                    (done)))))))))
