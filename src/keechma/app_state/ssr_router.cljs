@@ -7,7 +7,7 @@
 (defrecord SsrRouter [current-url routes route-processor routes-chan base-href app-db]
   IRouter
   (start! [this]
-    (swap! app-db assoc :route (route-processor (router/url->map routes current-url)))
+    (swap! app-db assoc :route (route-processor (router/url->map routes current-url) @app-db))
     this)
   (wrap-component [this]
     (fn [& children]

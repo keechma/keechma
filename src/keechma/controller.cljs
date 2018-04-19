@@ -133,6 +133,12 @@
 (defmulti redirect
   "Redirects the page to the URL based on the params."
   record-type)
+(defmulti reroute
+  "Restarts the route process. This is useful in combination with the `:route-processor`.
+  In some cases route processor might use info from the app-db to determine the current route,
+  which means that the value from the route processor might be different without the actual
+  route change happening."
+  record-type)
 
 
 (defmethod params :default [controller route-params] route-params)
@@ -186,3 +192,10 @@
   (= controller ((:running controller))))
 (defmethod redirect :default [controller params]
   ((:redirect-fn controller) params))
+(defmethod reroute :default [controller]
+  (let [out-chan (:out-chan controller)
+        cmd-info (reporter/cmd-info)
+        cmd-name :keechma.controller-manager/reroute]
+     (report controller :out cmd-name nil cmd-info)
+     (put! out-chan [cmd-name nil cmd-info])
+     controller))

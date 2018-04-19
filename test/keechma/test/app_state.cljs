@@ -56,6 +56,120 @@
                                     (unmount)
                                     (set! (.-hash (.-location js/window)) current-hash)
                                     (done)))))))
+(defrecord RerouteController [log])
+
+(defmethod controller/params RerouteController [_ route-params] true)
+
+(defmethod controller/start RerouteController [this params app-db]
+  (swap! (:log this) #(conj % [:reroute :start params]))
+  app-db)
+
+(defrecord LoginController [log])
+
+(defmethod controller/params LoginController [_ route-params]
+  (when (= "login" (get-in route-params [:data :page]))
+    :login))
+
+(defmethod controller/start LoginController [this params app-db]
+  (swap! (:log this) #(conj % [:login :start params]))
+  app-db)
+
+(defmethod controller/stop LoginController [this params app-db]
+  (swap! (:log this) #(conj % [:login :stop params]))
+  app-db)
+
+(defrecord DashboardController [log])
+
+(defmethod controller/params DashboardController [_ route-params]
+  (when (= "dashboard" (get-in route-params [:data :page]))
+    :dashboard))
+
+(defmethod controller/start DashboardController [this params app-db]
+  (swap! (:log this) #(conj % [:dashboard :start params]))
+  app-db)
+
+(defmethod controller/stop DashboardController [this params app-db]
+  (swap! (:log this) #(conj % [:dashboard :stop params]))
+  app-db)
+
+
+(deftest reroute
+  (let [[c unmount] (make-container)
+        current-hash (.-hash (.-location js/window))
+        _ (set! (.-hash (.-location js/window)) "!dashboard")
+        log (atom [])
+        app (app-state/start!
+             {:html-element c
+              :routes [":page"]
+              :controllers {:reroute (->RerouteController log)
+                            :dashboard (->DashboardController log)
+                            :login (->LoginController log)}
+              :route-processor (fn [route app-db]
+                                 (let [user (get-in app-db [:kv :user])]
+                                   (if user
+                                     route
+                                     (assoc-in route [:data :page] "login"))))
+              :components {:main {:renderer (fn [_]
+                                              [:div "HELLO WORLD"])}}})
+        app-db-atom (:app-db app)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= "login" (get-in @app-db-atom [:route :data :page])))
+             (swap! app-db-atom assoc-in [:kv :user] {:id 1})
+             (controller/reroute (get-in @app-db-atom [:internal :running-controllers :reroute]))
+             (<! (timeout 20))
+             (is (= "dashboard" (get-in @app-db-atom [:route :data :page])))
+             (app-state/stop! app (fn []
+                                    (is (= [[:reroute :start true]
+                                            [:login :start :login]
+                                            [:login :stop :login]
+                                            [:dashboard :start :dashboard]
+                                            [:dashboard :stop :dashboard]]
+                                           @log))
+                                    (unmount)
+                                    (set! (.-hash (.-location js/window)) current-hash)
+                                    (done)))))))
+
+(deftest reroute-from-ui
+  (let [[c unmount] (make-container)
+        current-hash (.-hash (.-location js/window))
+        _ (set! (.-hash (.-location js/window)) "!dashboard")
+        log (atom [])
+        ui-reroute (atom identity)
+        app (app-state/start!
+             {:html-element c
+              :routes [":page"]
+              :controllers {:reroute (->RerouteController log)
+                            :dashboard (->DashboardController log)
+                            :login (->LoginController log)}
+              :route-processor (fn [route app-db]
+                                 (let [user (get-in app-db [:kv :user])]
+                                   (if user
+                                     route
+                                     (assoc-in route [:data :page] "login"))))
+              :components {:main {:renderer (fn [ctx]
+                                              (reset! ui-reroute #(ui/reroute ctx))
+                                              [:div "HELLO WORLD"])}}})
+        app-db-atom (:app-db app)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= "login" (get-in @app-db-atom [:route :data :page])))
+             (swap! app-db-atom assoc-in [:kv :user] {:id 1})
+             (@ui-reroute)
+             (<! (timeout 20))
+             (is (= "dashboard" (get-in @app-db-atom [:route :data :page])))
+             (app-state/stop! app (fn []
+                                    (is (= [[:reroute :start true]
+                                            [:login :start :login]
+                                            [:login :stop :login]
+                                            [:dashboard :start :dashboard]
+                                            [:dashboard :stop :dashboard]]
+                                           @log))
+                                    (unmount)
+                                    (set! (.-hash (.-location js/window)) current-hash)
+                                    (done)))))))
 
 (defrecord AppStartController [inner-app])
 
@@ -278,9 +392,9 @@
 (defmethod controller/start ControllerB [_ _ app-db]
   (assoc-in app-db [:kv :start] :value))
 (defmethod controller/handler ControllerB [this app-db-atom _ _]
- (js/setTimeout (fn []
-                  (swap! app-db-atom assoc-in [:kv :baz] :qux)
-                  (reset! (:kv-state-atom this) (:kv @app-db-atom))) 10))
+  (js/setTimeout (fn []
+                   (swap! app-db-atom assoc-in [:kv :baz] :qux)
+                   (reset! (:kv-state-atom this) (:kv @app-db-atom))) 10))
 
 (deftest controller-kv-test []
   (let [kv-state-atom (atom nil)
@@ -900,7 +1014,7 @@
 
 (deftest basic-ssr
   (let [[c unmount] (make-container)
-         current-href (.-href js/location)
+        current-href (.-href js/location)
         app-definition {:html-element c
                         :controllers {}
                         :router :history
@@ -929,7 +1043,7 @@
 
 (deftest basic-ssr-with-route-processor
   (let [[c unmount] (make-container)
-         current-href (.-href js/location)
+        current-href (.-href js/location)
         app-definition {:html-element c
                         :controllers {}
                         :router :history
@@ -1134,7 +1248,7 @@
                           (fn [c]
                             (update-in c [:lifecycle :log] #(conj % :start-2)))]
                   :stop [(fn [c]
-                            (update-in c [:lifecycle :log] #(conj % :stop-1)))
+                           (update-in c [:lifecycle :log] #(conj % :stop-1)))
                          (fn [c]
                            (update-in c [:lifecycle :log] #(conj % :stop-2)))]}}]
     (async done

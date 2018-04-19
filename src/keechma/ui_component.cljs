@@ -31,7 +31,12 @@
     partially applied (`ctx`) as the first argument.")
   (current-route [this]
     "Returns a current route data. It will use the `:current-route-fn` that is
-    injected from the outside to return the data."))
+    injected from the outside to return the data.")
+  (reroute [this]
+    "Restarts the route process. This is useful in combination with the `:route-processor`.
+    In some cases route processor might use info from the app-db to determine the current route,
+    which means that the value from the route processor might be different without the actual
+    route change happening."))
 
 (extend-type default
   IUIComponent
@@ -79,7 +84,13 @@
       (with-meta (partial (:renderer this) renderer-context)
         {:name (:name this)
          ::renderer (:renderer this)
-         ::context renderer-context}))))
+         ::context renderer-context})))
+  (reroute [this]
+    (let [cmd-info (reporter/cmd-info)
+          command :keechma.controller-manager/reroute]
+       (report this command nil cmd-info)
+       (put! (:commands-chan this) [command nil cmd-info])
+       nil)))
 
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
