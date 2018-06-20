@@ -223,7 +223,7 @@
 
 (defrecord RedirectController [])
 
-(defmethod controller/start RedirectController [this app-db _]
+(defmethod controller/start RedirectController [this params app-db]
   (controller/redirect this {:foo "bar"})
   app-db)
 
@@ -241,6 +241,52 @@
              (app-state/stop! app (fn []
                                     (unmount)
                                     (done)))))))
+
+(defrecord RedirectControllerBack [])
+
+(defmethod controller/params RedirectControllerBack [_ _] true)
+
+(defmethod controller/start RedirectControllerBack [this params app-db]
+  (controller/redirect this nil :back)
+  app-db)
+
+(deftest redirect-from-controller-back []
+  (set! (.-hash js/location) "!?baz=qux")
+  (set! (.-hash js/location) "!?qux=foo")
+  (is (= (.. js/window -location -hash) "#!?qux=foo"))
+  (let [[c unmount] (make-container) 
+        app (app-state/start!
+             {:html-element c
+              :controllers {:redirect (->RedirectControllerBack)}
+              :components {:main {:renderer (fn [_] [:div])}}})]
+    (async done
+           (go
+             (<! (timeout 100))
+             (is (= (.. js/window -location -hash) "#!?baz=qux"))
+             (set! (.-hash js/location) "")
+             (app-state/stop! app (fn []
+                                    (unmount)
+                                    (done)))))))
+
+(deftest redirect-from-controller-back-history-router []
+  (let [current-href (.-href js/location)]
+    (.pushState js/history nil "" "?baz=qux")
+    (.pushState js/history nil "" "?qux=foo")
+    (is (= (.. js/window -location -search) "?qux=foo"))
+    (let [[c unmount] (make-container) 
+          app (app-state/start!
+               {:html-element c
+                :router :history
+                :controllers {:redirect (->RedirectControllerBack)}
+                :components {:main {:renderer (fn [_] [:div])}}})]
+      (async done
+             (go
+               (<! (timeout 100))
+               (is (= (.. js/window -location -search) "?baz=qux"))
+               (.pushState js/history nil "", current-href)
+               (app-state/stop! app (fn []
+                                      (unmount)
+                                      (done))))))))
 
 (deftest redirect-from-component []
   (let [[c unmount] (make-container)

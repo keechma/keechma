@@ -32,7 +32,7 @@
   (redirect! [this params] (core/redirect! this params nil))
   (redirect! [this params action]
     (if (= :back action)
-      (.back (.-history js/window))
+      (.back js/history)
       (set! (.-hash js/location) (str "#!" (router/map->url (:routes this) params)))))
   (url [this params]
     (str "#!" (router/map->url (:routes this) params)))

@@ -128,7 +128,7 @@
   (redirect! [this params action]
     (let [redirect-action (get-redirect-action action)]
       (if (= :back redirect-action)
-        (.back (.-history js/window))
+        (.back js/history)
         (let [redirect-fn (get urlchange-dispatcher redirect-action)]
           (redirect-fn (str (.-origin js/location) (make-url routes base-href params)))))))
   (wrap-component [this]
