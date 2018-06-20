@@ -1,4 +1,4 @@
-(defproject keechma/keechma "0.3.6"
+(defproject keechma/keechma "0.3.7"
   :description "Frontend micro framework for ClojureScript and Reagent"
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
