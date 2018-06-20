@@ -18,7 +18,7 @@
     "Returns a URL based on the params. It will use the `:url-fn` that is injected
     from the outside to generate the URL based on the current app routes.")
   (report [this name payload] [this name payload path] [this name payload path severity])
-  (redirect [this params]
+  (redirect [this params] [this params replace?]
     "Redirects page to the URL generated from params")
   (subscription [this key] [this key args]
     "Returns a subscription based on the key.")
@@ -32,6 +32,8 @@
   (current-route [this]
     "Returns a current route data. It will use the `:current-route-fn` that is
     injected from the outside to return the data.")
+  (router [this]
+    "Returns the router")
   (reroute [this]
     "Restarts the route process. This is useful in combination with the `:route-processor`.
     In some cases route processor might use info from the app-db to determine the current route,
@@ -49,8 +51,12 @@
     ([this name payload cmd-info severity]
      (let [reporter (or (:reporter this) (fn [_ _ _ _ _ _ _ _]))]
        (reporter (:name this) [(:topic this) name] payload cmd-info severity))))
-  (redirect [this params]
-    ((:redirect-fn this) params))
+  (router [this]
+    (:router this))
+  (redirect
+    ([this params] (redirect this params false))
+    ([this params replace?]
+     ((:redirect-fn this) params replace?)))
   (current-route [this]
     (let [current-route-fn (:current-route-fn this)]
       (current-route-fn)))
@@ -187,7 +193,8 @@
                    :commands-chan (:commands-chan parent)
                    :url-fn (:url-fn parent)
                    :current-route-fn (:current-route-fn parent)
-                   :app-db (:app-db parent))))
+                   :app-db (:app-db parent)
+                   :router (:router parent))))
 
 (defn system
   "Creates a component system.

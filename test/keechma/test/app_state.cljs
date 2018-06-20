@@ -177,6 +177,7 @@
 ;; When the controller is started, start the inner app and save
 ;; it's definition inside the app-db
 (defmethod controller/start AppStartController [this params app-db]
+  (is (boolean (controller/router this)))
   (assoc app-db :inner-app (app-state/start! (:inner-app this) false)))
 (defmethod controller/wake AppStartController [this params app-db]
   (let [serialized-app (:inner-app app-db)]
@@ -246,6 +247,7 @@
              {:html-element c 
               :components {:main {:renderer
                                   (fn [ctx]
+                                    (is (boolean (ui/router ctx)))
                                     [:button
                                      {:on-click #(ui/redirect ctx {:baz "qux"})}
                                      "click"])}}})]

@@ -29,10 +29,12 @@
       (assoc this :history history)))
   (stop! [this]
     (events/unlisten (:history this) EventType/NAVIGATE (:hashchange-listener this)))
-  (redirect! [this params]
+  (redirect! [this params] (core/redirect! this params nil))
+  (redirect! [this params _]
     (set! (.-hash js/location) (str "#!" (router/map->url (:routes this) params))))
   (url [this params]
-    (str "#!" (router/map->url (:routes this) params))))
+    (str "#!" (router/map->url (:routes this) params)))
+  (linkable? [this] true))
 
 (defn constructor [routes routes-chan state]
   (let [listener (partial hashchange-listener (router/expand-routes routes) routes-chan)]

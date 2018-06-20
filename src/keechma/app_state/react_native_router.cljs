@@ -53,6 +53,8 @@
   (stop! [this]
     (remove-watch route-atom (:watch-id this)))
   (redirect! [this params]
+    (navigate! :push params))
+  (redirect! [this params replace?]
     (navigate! :push params)))
 
 (defn constructor [_ routes-chan state]

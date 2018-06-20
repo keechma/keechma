@@ -127,8 +127,10 @@
 
 (defn ^:private add-redirect-fn-to-controllers [controllers router]
   (reduce-kv (fn [m k v]
-               (assoc m k (assoc v :redirect-fn
-                                 (partial app-state-core/redirect! router)))) {} controllers))
+               (let [new-v (assoc v
+                                  :redirect-fn (partial app-state-core/redirect! router)
+                                  :router router)]
+                 (assoc m k new-v))) {} controllers))
 
 (defn ^:private add-context-to-controllers [controllers context]
   (reduce-kv (fn [m k v]
@@ -163,7 +165,8 @@
                  {:commands-chan (:commands-chan state)
                   :reporter (partial (:reporter state) :component :out)
                   :app-db (:app-db state)
-                  :url-fn (partial app-state-core/url router) 
+                  :url-fn (partial app-state-core/url router)
+                  :router router
                   :redirect-fn (partial app-state-core/redirect! router)
                   :current-route-fn (fn [] current-route-reaction)})]
     (assoc state :main-component

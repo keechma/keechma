@@ -139,6 +139,9 @@
   which means that the value from the route processor might be different without the actual
   route change happening."
   record-type)
+(defmulti router
+  "Returns the app's router"
+  record-type)
 
 
 (defmethod params :default [controller route-params] route-params)
@@ -190,8 +193,9 @@
          (send-command controller [t command-name] args origin))))))
 (defmethod is-running? :default [controller]
   (= controller ((:running controller))))
-(defmethod redirect :default [controller params]
-  ((:redirect-fn controller) params))
+(defmethod redirect :default [controller params & args]
+  (let [replace? (boolean (first args))]
+    ((:redirect-fn controller) params replace?)))
 (defmethod reroute :default [controller]
   (let [out-chan (:out-chan controller)
         cmd-info (reporter/cmd-info)
@@ -199,3 +203,5 @@
      (report controller :out cmd-name nil cmd-info)
      (put! out-chan [cmd-name nil cmd-info])
      controller))
+(defmethod router :default [controller]
+  (:router controller))

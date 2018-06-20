@@ -32,6 +32,10 @@
      :unbind (fn [handler]
                (swap! handlers (fn [h] (filter #(not= handler %) h)))
                (unbind-main-handler))
+     :replace (fn [href]
+                (.replaceState js/history nil "" href)
+                (doseq [h @handlers]
+                  (h href)))
      :go (fn [href]
            (.pushState js/history nil "" href)
            (doseq [h @handlers]
@@ -100,6 +104,10 @@
       (add-trailing-slash)
       (add-leading-slash)))
 
+(defn link-has-data-replace-state? [el]
+  (and (link? el)
+       (boolean (.getAttribute el "data-replace-state"))))
+
 (defrecord HistoryRouter [routes routes-chan base-href app-db]
   IRouter
   (start! [this]
@@ -110,8 +118,10 @@
       (assoc this :urlchange-handler handler)))
   (stop! [this]
     ((:unbind urlchange-dispatcher) (:urlchange-handler this)))
-  (redirect! [this params]
-    ((:go urlchange-dispatcher) (str (.-origin js/location) (make-url routes base-href params))))
+  (redirect! [this params] (core/redirect! this params false))
+  (redirect! [this params replace?]
+    (let [redirect-fn (get urlchange-dispatcher (if replace? :replace :go))]
+      (redirect-fn (str (.-origin js/location) (make-url routes base-href params)))))
   (wrap-component [this]
     (let [click-handler
           (fn [e]
@@ -122,14 +132,16 @@
                            (not (mod-key-pressed? e))
                            (link-has-prefixed-url? el base-href))
                   (when-not (should-href-pass-through? href)
-                    ((:go urlchange-dispatcher) href)
-                    (.preventDefault e)
-                    (.stopPropagation e))))))]
+                    (let [redirect-fn (get urlchange-dispatcher (if (link-has-data-replace-state? el) :replace :go))]
+                      (redirect-fn href)
+                      (.preventDefault e)
+                      (.stopPropagation e)))))))]
       (fn [& children]
         (into [:div {:on-click click-handler}]
               children))))
   (url [this params]
-    (make-url routes base-href params)))
+    (make-url routes base-href params))
+  (linkable? [this] true))
 
 (defn constructor [routes routes-chan state]
   (let [base-href (process-base-href (or (:base-href state) "/"))]
