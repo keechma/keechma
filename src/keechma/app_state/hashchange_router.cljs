@@ -30,11 +30,14 @@
   (stop! [this]
     (events/unlisten (:history this) EventType/NAVIGATE (:hashchange-listener this)))
   (redirect! [this params] (core/redirect! this params nil))
-  (redirect! [this params _]
-    (set! (.-hash js/location) (str "#!" (router/map->url (:routes this) params))))
+  (redirect! [this params action]
+    (if (= :back action)
+      (.back (.-history js/window))
+      (set! (.-hash js/location) (str "#!" (router/map->url (:routes this) params)))))
   (url [this params]
     (str "#!" (router/map->url (:routes this) params)))
-  (linkable? [this] true))
+  (linkable? [this] true)
+  (wrap-component [_] nil))
 
 (defn constructor [routes routes-chan state]
   (let [listener (partial hashchange-listener (router/expand-routes routes) routes-chan)]

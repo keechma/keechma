@@ -194,8 +194,8 @@
 (defmethod is-running? :default [controller]
   (= controller ((:running controller))))
 (defmethod redirect :default [controller params & args]
-  (let [replace? (boolean (first args))]
-    ((:redirect-fn controller) params replace?)))
+  (let [action (boolean (first args))]
+    ((:redirect-fn controller) params action)))
 (defmethod reroute :default [controller]
   (let [out-chan (:out-chan controller)
         cmd-info (reporter/cmd-info)

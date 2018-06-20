@@ -9,6 +9,12 @@
            goog.history.Html5History
            goog.Uri))
 
+(def supported-redirect-actions #{:push :replace :back})
+(defn get-redirect-action [action]
+  (if (contains? supported-redirect-actions action)
+    action
+    :push))
+
 (defn make-urlchange-dispatcher []
   (let [handlers (atom [])
         main-handler
@@ -36,10 +42,10 @@
                 (.replaceState js/history nil "" href)
                 (doseq [h @handlers]
                   (h href)))
-     :go (fn [href]
-           (.pushState js/history nil "" href)
-           (doseq [h @handlers]
-             (h href)))}))
+     :push (fn [href]
+             (.pushState js/history nil "" href)
+             (doseq [h @handlers]
+               (h href)))}))
 
 (def urlchange-dispatcher (make-urlchange-dispatcher))
 
@@ -118,10 +124,13 @@
       (assoc this :urlchange-handler handler)))
   (stop! [this]
     ((:unbind urlchange-dispatcher) (:urlchange-handler this)))
-  (redirect! [this params] (core/redirect! this params false))
-  (redirect! [this params replace?]
-    (let [redirect-fn (get urlchange-dispatcher (if replace? :replace :go))]
-      (redirect-fn (str (.-origin js/location) (make-url routes base-href params)))))
+  (redirect! [this params] (core/redirect! this params :push))
+  (redirect! [this params action]
+    (let [redirect-action (get-redirect-action action)]
+      (if (= :back redirect-action)
+        (.back (.-history js/window))
+        (let [redirect-fn (get urlchange-dispatcher redirect-action)]
+          (redirect-fn (str (.-origin js/location) (make-url routes base-href params)))))))
   (wrap-component [this]
     (let [click-handler
           (fn [e]
@@ -132,7 +141,7 @@
                            (not (mod-key-pressed? e))
                            (link-has-prefixed-url? el base-href))
                   (when-not (should-href-pass-through? href)
-                    (let [redirect-fn (get urlchange-dispatcher (if (link-has-data-replace-state? el) :replace :go))]
+                    (let [redirect-fn (get urlchange-dispatcher (if (link-has-data-replace-state? el) :replace :push))]
                       (redirect-fn href)
                       (.preventDefault e)
                       (.stopPropagation e)))))))]

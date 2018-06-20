@@ -18,14 +18,14 @@
   ([] (animation-frame 1))
   ([n] (animation-frame n (chan 1)))
   ([n out]
-     (js/window.requestAnimationFrame
-      (fn [timestamp]
-        (if (= n 1)
-          (do
-            (put! out timestamp)
-            (close! out))
-          (animation-frame (dec n) out))))
-     out))
+   (js/window.requestAnimationFrame
+    (fn [timestamp]
+      (if (= n 1)
+        (do
+          (put! out timestamp)
+          (close! out))
+        (animation-frame (dec n) out))))
+   out))
 
 (defn dissoc-in
   "Dissociates an entry from a nested associative structure returning a new
@@ -40,3 +40,12 @@
           (dissoc m k)))
       m)
     (dissoc m k)))
+
+(defn index-of [coll item]
+  (loop [c coll 
+         idx 0]
+    (if-let [first-item (first c)]
+      (if (= first-item item) 
+        idx
+        (recur (rest c) (inc idx)))
+      nil)))

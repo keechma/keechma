@@ -45,6 +45,8 @@
   (start! [this]
     (let [routes-chan (:routes-chan this)
           watch-id (:watch-id this)]
+      (when ^boolean js/goog.DEBUG 
+        (.warn js/console ":react-native router is deprecated. It will continue to work indefinitely, but new projects should use :memory router instead."))
       (add-watch route-atom watch-id
                  (fn [_ _ _ route-data]
                    (put! routes-chan {:data route-data})))
@@ -54,8 +56,11 @@
     (remove-watch route-atom (:watch-id this)))
   (redirect! [this params]
     (navigate! :push params))
-  (redirect! [this params replace?]
-    (navigate! :push params)))
+  (redirect! [this params _]
+    (navigate! :push params))
+  (url [_ params] params)
+  (wrap-component [_] nil)
+  (linkable? [_] false))
 
 (defn constructor [_ routes-chan state]
   (let [watch-id (keyword (gensym :route-watch))]

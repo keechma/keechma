@@ -54,9 +54,9 @@
   (router [this]
     (:router this))
   (redirect
-    ([this params] (redirect this params false))
-    ([this params replace?]
-     ((:redirect-fn this) params replace?)))
+    ([this params] (redirect this params :push))
+    ([this params action]
+     ((:redirect-fn this) params action)))
   (current-route [this]
     (let [current-route-fn (:current-route-fn this)]
       (current-route-fn)))

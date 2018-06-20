@@ -9,12 +9,16 @@
   (start! [this]
     (swap! app-db assoc :route (route-processor (router/url->map routes current-url) @app-db))
     this)
+  (stop! [this] this)
   (wrap-component [this]
     (fn [& children]
       (into [:div {:on-click (fn [_])}]
             children)))
   (url [this params]
-    (str base-href (router/map->url routes params))))
+    (str base-href (router/map->url routes params)))
+  (linkable? [_] true)
+  (redirect! [this _] this)
+  (redirect! [this _ _] this))
 
 (defn constructor [current-url routes route-processor routes-chan state]
   (let [base-href (history-router/process-base-href (or (:base-href state) "/"))]

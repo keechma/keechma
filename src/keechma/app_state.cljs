@@ -8,6 +8,7 @@
             [keechma.app-state.hashchange-router :as hashchange-router]
             [keechma.app-state.react-native-router :as react-native-router]
             [keechma.app-state.history-router :as history-router]
+            [keechma.app-state.memory-router :as memory-router]
             [cognitect.transit :as t])
   (:require-macros [cljs.core.async.macros :as m :refer [go]]
                    [reagent.ratom :refer [reaction]]))
@@ -152,9 +153,10 @@
 (defn start-router! [state]
   (let [router (:router state)]
     (case router
-      :hashchange (start-selected-router! state hashchange-router/constructor)
+      :hashchange   (start-selected-router! state hashchange-router/constructor)
       :react-native (start-selected-router! state react-native-router/constructor)
-      :history (start-selected-router! state history-router/constructor)
+      :history      (start-selected-router! state history-router/constructor)
+      :memory       (start-selected-router! state memory-router/constructor)
       state)))
 
 (defn ^:private resolve-main-component [state]

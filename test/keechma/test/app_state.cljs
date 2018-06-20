@@ -13,7 +13,8 @@
             [keechma.app-state.core :refer [reg-on-start reg-on-stop]]
             [keechma.ssr :as ssr]
             [keechma.test.util :refer [make-container]]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [keechma.app-state.memory-router :as memory-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go alt!]]
                    [reagent.ratom :refer [reaction]]))
 
@@ -605,6 +606,54 @@
              (<! (timeout 20))
              (done)))))
 
+(deftest hashchange-router-redirect
+  (let [[c unmount] (make-container)
+        _ (set! (.-hash js/location) "!page-name?baz=qux")
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :hashchange
+                        :routes [":page"]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div
+                                               [:span.link-el
+                                                {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"})}
+                                                "Link"]
+                                               [:span.replace-link-el
+                                                {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"} :replace)}
+                                                "Replace"]
+                                               [:span.back-link-el
+                                                {:on-click #(ui/redirect ctx nil :back)}
+                                                "Back"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (sim/click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:foo "Bar"
+                     :page "page-name2"}))
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (let [back-to-route (get-in @(:app-db app) [:route :data])]
+               (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+               (<! (timeout 20))
+               (is (= (get-in @(:app-db app) [:route :data])
+                      {:foo "Bar"
+                       :page "page-name2"}))
+               (app-state/stop! app)
+               (unmount)
+               (set! (.-hash js/location) "")
+               (<! (timeout 20))
+               (done))))))
+
 (deftest history-base-href
   (is (= "/app/" (history-router/process-base-href "app")))
   (is (= "/app/" (history-router/process-base-href "/app")))
@@ -686,9 +735,16 @@
                         :routes [":page"]
                         :components {:main {:renderer
                                             (fn [ctx]
-                                              [:span.link-el
-                                               {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"})}
-                                               "Link"])}}}
+                                              [:div
+                                               [:span.link-el
+                                                {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"})}
+                                                "Link"]
+                                               [:span.replace-link-el
+                                                {:on-click #(ui/redirect ctx {:page "page-name2" :foo "Bar"} :replace)}
+                                                "Replace"]
+                                               [:span.back-link-el
+                                                {:on-click #(ui/redirect ctx nil :back)}
+                                                "Back"]])}}}
         app (app-state/start! app-definition)]
     (async done
            (go
@@ -702,12 +758,23 @@
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
                      :page "page-name2"}))
-             (app-state/stop! app)
-             (unmount)
-             (.pushState js/history nil "", current-href)
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
              (<! (timeout 20))
-             (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
-             (done)))))
+             (is (= (get-in @(:app-db app) [:route :data])
+                    {:baz "qux"
+                     :page "page-name"}))
+             (let [back-to-route (get-in @(:app-db app) [:route :data])]
+               (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+               (<! (timeout 20))
+               (is (= (get-in @(:app-db app) [:route :data])
+                      {:foo "Bar"
+                       :page "page-name2"}))
+               (app-state/stop! app)
+               (unmount)
+               (.pushState js/history nil "", current-href)
+               (<! (timeout 20))
+               (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
+               (done))))))
 
 (deftest history-router-2-apps
   (let [[c1 unmount1] (make-container)
@@ -1327,3 +1394,178 @@
                              (get-in app-db [:lifecycle :log]))))
                     (unmount)
                     (done)))))))))
+
+
+(deftest memory-router-with-default-route
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :memory
+                        :routes [["" {:foo :bar}]]
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.push-link-el 
+                                                {:on-click #(ui/redirect ctx {:push :baz})}
+                                                "Push"]
+                                               [:span.replace-link-el 
+                                                {:on-click #(ui/redirect ctx {:replace :qux} :replace)}
+                                                "Replace"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{:foo :bar}]}))
+             (sim/click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:push :baz}
+                     :stack [{:foo :bar} {:push :baz}]}))
+             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:replace :qux}
+                     :stack [{:foo :bar} {:replace :qux}]}))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(deftest memory-router-without-default-route
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :memory
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.push-link-el 
+                                                {:on-click #(ui/redirect ctx {:push :baz})}
+                                                "Push"]
+                                               [:span.replace-link-el 
+                                                {:on-click #(ui/redirect ctx {:replace :qux} :replace)}
+                                                "Replace"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+             (sim/click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:push :baz}
+                     :stack [{} {:push :baz}]}))
+             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:replace :qux}
+                     :stack [{} {:replace :qux}]}))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(deftest memory-router-go-back-with-default-route
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :routes [["" {:foo :bar}]]
+                        :router :memory
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.push-link-el 
+                                                {:on-click #(ui/redirect ctx {:push :baz})}
+                                                "Push"]
+                                               [:span.replace-link-el 
+                                                {:on-click #(ui/redirect ctx {:replace :qux} :replace)}
+                                                "Replace"]
+                                               [:span.back-link-el
+                                                {:on-click #(ui/redirect ctx nil :back)}
+                                                "Back"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{:foo :bar}]}))
+             (sim/click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:push :baz}
+                     :stack [{:foo :bar} {:push :baz}]}))
+             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:replace :qux}
+                     :stack [{:foo :bar} {:replace :qux}]}))
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{:foo :bar}]}))
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{:foo :bar}]}))
+
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+(deftest memory-router-go-back-without-default-route
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :memory
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.push-link-el 
+                                                {:on-click #(ui/redirect ctx {:push :baz})}
+                                                "Push"]
+                                               [:span.replace-link-el 
+                                                {:on-click #(ui/redirect ctx {:replace :qux} :replace)}
+                                                "Replace"]
+                                               [:span.back-link-el
+                                                {:on-click #(ui/redirect ctx nil :back)}
+                                                "Back"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+             (sim/click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:push :baz}
+                     :stack [{} {:push :baz}]}))
+             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:replace :qux}
+                     :stack [{} {:replace :qux}]}))
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+             (sim/click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
