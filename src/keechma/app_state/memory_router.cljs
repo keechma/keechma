@@ -1,6 +1,7 @@
 (ns keechma.app-state.memory-router
   (:require [keechma.app-state.core :as core :refer [IRouter]]
-            [cljs.core.async :refer [put!]]))
+            [cljs.core.async :refer [put!]]
+            [keechma.util :refer [index-of]]))
 
 (def app-route-states-atom (atom {}))
 
@@ -22,12 +23,20 @@
     app-route-state
     (get-default-route routes)))
 
+(defn push-to-stack [current-stack params]
+  (if-let [idx (index-of current-stack params)]
+    (vec (take (inc idx) current-stack))
+    (conj current-stack params)))
+
+(defn limit-stack [stack]
+  (vec (take-last 50 stack)))
+
 (defn apply-route-change [action routes current-route params]
   (let [current-stack (:stack current-route)]
     (case action
-      :push {:data params :stack (conj current-stack params)}
-      :replace {:data params :stack (conj (vec (drop-last current-stack)) params)} 
-      :back (let [new-stack (vec (drop-last current-stack))
+      :push {:data params :stack (limit-stack (push-to-stack current-stack params))}
+      :replace {:data params :stack (limit-stack (conj (vec (drop-last current-stack)) params))} 
+      :back (let [new-stack (limit-stack (vec (drop-last current-stack)))
                   new-params (last new-stack)]
               (if new-params
                 {:data new-params :stack new-stack}
@@ -51,7 +60,9 @@
           redirect-action (get-redirect-action action)
           app-db          (deref (:app-db this))
           current-route   (:route app-db)
-          new-route       (apply-route-change action routes current-route params)]
+          new-route       (apply-route-change action routes current-route params)
+          app-name        (:app-name this)]
+      (swap! app-route-states-atom assoc app-name new-route)
       (put! routes-chan new-route)))
   (wrap-component [_] nil)
   (linkable? [_] false))

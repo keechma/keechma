@@ -1615,3 +1615,89 @@
              (app-state/stop! app)
              (unmount)
              (done)))))
+
+(deftest memory-router-should-drop-part-of-stack-if-route-exists-in-stack
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :memory
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.link-el-1 
+                                                {:on-click #(ui/redirect ctx {:foo :bar})}
+                                                "1"]
+                                               [:span.link-el-2 
+                                                {:on-click #(ui/redirect ctx {:baz :qux})}
+                                                "2"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+             (sim/click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{} {:foo :bar}]}))
+             (sim/click (sel1 c [:.link-el-2]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:baz :qux}
+                     :stack [{} {:foo :bar} {:baz :qux}]}))
+             (sim/click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{} {:foo :bar}]}))
+             (sim/click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{} {:foo :bar}]}))
+
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
+
+
+(deftest memory-router-knows-how-to-restore-route-state
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {}
+                        :router :memory
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div 
+                                               [:span.link-el-1 
+                                                {:on-click #(ui/redirect ctx {:foo :bar})}
+                                                "1"]
+                                               [:span.link-el-2 
+                                                {:on-click #(ui/redirect ctx {:baz :qux})}
+                                                "2"]])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {}
+                     :stack [{}]}))
+             (sim/click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 20))
+             (is (= (:route @(:app-db app))
+                    {:data {:foo :bar}
+                     :stack [{} {:foo :bar}]}))
+             (app-state/stop! app)
+             (<! (timeout 20))
+             (let [app2 (app-state/start! app-definition)]
+               (is (= (:route @(:app-db app2))
+                      {:data {:foo :bar}
+                       :stack [{} {:foo :bar}]}))
+
+               (app-state/stop! app2)
+               (unmount)
+               (done))))))
