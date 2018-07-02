@@ -193,9 +193,11 @@
          (send-command controller [t command-name] args origin))))))
 (defmethod is-running? :default [controller]
   (= controller ((:running controller))))
-(defmethod redirect :default [controller params & args]
-  (let [action (first args)]
-    ((:redirect-fn controller) params action)))
+(defmethod redirect :default
+  ([controller params]
+   (redirect controller params nil))
+  ([controller params action]
+   ((:redirect-fn controller) params action)))
 (defmethod reroute :default [controller]
   (let [out-chan (:out-chan controller)
         cmd-info (reporter/cmd-info)

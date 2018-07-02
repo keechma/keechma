@@ -6,6 +6,7 @@
 (def app-route-states-atom (atom {}))
 
 (def supported-redirect-actions #{:push :replace :back})
+
 (defn get-redirect-action [action]
   (if (contains? supported-redirect-actions action)
     action
@@ -60,7 +61,7 @@
           redirect-action (get-redirect-action action)
           app-db          (deref (:app-db this))
           current-route   (:route app-db)
-          new-route       (apply-route-change action routes current-route params)
+          new-route       (apply-route-change redirect-action routes current-route params)
           app-name        (:app-name this)]
       (swap! app-route-states-atom assoc app-name new-route)
       (put! routes-chan new-route)))
