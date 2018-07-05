@@ -13,7 +13,7 @@
      (if (= :route-changed command-name)
        (do
          (reporter :app :out :controller [(:name controller) command-name] args origin :info)
-         (reporter :controller :in (:name controller) command-name cmd-info :info))
+         (reporter :controller :in (:name controller) command-name args cmd-info :info))
        (reporter :controller :in (:name controller) command-name args cmd-info :info))
      (put! (:in-chan controller) [command-name args cmd-info])
      controller)))
