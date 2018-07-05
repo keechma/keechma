@@ -13,7 +13,7 @@
      (if (= :route-changed command-name)
        (do
          (reporter :app :out :controller [(:name controller) command-name] args origin :info)
-         (reporter :controller :in (:name controller) [:keechma/lifecycle command-name] cmd-info :info))
+         (reporter :controller :in (:name controller) command-name cmd-info :info))
        (reporter :controller :in (:name controller) command-name args cmd-info :info))
      (put! (:in-chan controller) [command-name args cmd-info])
      controller)))
@@ -55,11 +55,13 @@
     (loop [stop stop
            app-db app-db]
       (if-let [s (first stop)]
-        (let [[topic params] s]
-          (reporter :app :out :controller [topic :stop] params (reporter/cmd-info) :info)
-          (let [controller (get running-controllers topic)
-                _ (reporter :controller :in topic [:lifecycle :stop] (:params controller) (reporter/cmd-info) :info)
-                new-app-db (-> (controller/stop controller (:params controller) app-db)
+        (let [[topic params] s
+              controller (get running-controllers topic)
+              app-out-cmd-info (reporter/cmd-info)
+              controller-in-cmd-info (reporter/with-origin app-out-cmd-info)]
+          (reporter :app :out :controller [topic [:keechma/lifecycle :stop]] params app-out-cmd-info :info)
+          (reporter :controller :in topic [:keechma/lifecycle :stop] (:params controller) controller-in-cmd-info :info)
+          (let [new-app-db (-> (controller/stop controller (:params controller) app-db)
                                (dissoc-in [:internal :running-controllers topic]))]
             (close! (:in-chan controller))
             (recur (rest stop) new-app-db)))
@@ -70,9 +72,11 @@
   (loop [start-or-wake start-or-wake
          app-db app-db]
       (if-let [s (first start-or-wake)]
-        (let [[topic params] s]
-          (reporter :app :out :controller [topic reporter-action] params (reporter/cmd-info) :info)
-          (reporter :controller :in topic [:keecmha/lifecycle reporter-action] params (reporter/cmd-info) :info)
+        (let [[topic params] s
+              app-out-cmd-info (reporter/cmd-info)
+              controller-in-cmd-info (reporter/with-origin app-out-cmd-info)]
+          (reporter :app :out :controller [topic [:keechma/lifecycle reporter-action]] params app-out-cmd-info :info)
+          (reporter :controller :in topic [:keechma/lifecycle reporter-action] params controller-in-cmd-info :info)
           (let [controller (assoc (get controllers topic)
                                   :in-chan (chan)
                                   :out-chan commands-chan
@@ -92,9 +96,11 @@
 
 (defn call-handler-on-started-controllers [app-db-atom reporter start]
   (doseq [[topic _] start]
-    (let [controller (get-in @app-db-atom [:internal :running-controllers topic])]
-      (reporter :app :out :controller [topic :handler] nil (reporter/cmd-info) :info)
-      (reporter :controller :in topic [:keechma/lifecycle :handler] nil (reporter/cmd-info) :info)
+    (let [controller (get-in @app-db-atom [:internal :running-controllers topic])
+          app-out-cmd-info (reporter/cmd-info)
+          controller-in-cmd-info (reporter/with-origin app-out-cmd-info)]
+      (reporter :app :out :controller [topic [:keechma/lifecycle :handler]] nil app-out-cmd-info :info)
+      (reporter :controller :in topic [:keechma/lifecycle :handler] nil controller-in-cmd-info :info)
       (controller/handler controller app-db-atom (:in-chan controller) (:out-chan controller)))))
 
 (defn send-route-changed-to-surviving-controllers [app-db-atom reporter route-changed route-params]
