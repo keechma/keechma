@@ -1,4 +1,4 @@
-(defproject keechma/keechma "0.3.12"
+(defproject keechma/keechma "0.3.13"
   :description "Frontend micro framework for ClojureScript and Reagent"
   :url "http://github.com/keechma/keechma"
   :license {:name "MIT"}
@@ -14,7 +14,7 @@
                  [lein-doo "0.1.7"]
                  [com.stuartsierra/dependency "0.2.0"]
                  [secretary "1.2.3"]
-                 [keechma/router "0.1.1"]
+                 [keechma/router "0.1.2"]
                  [com.cognitect/transit-cljs "0.8.239"]
                  [syntest "0.1.0"]]
 
