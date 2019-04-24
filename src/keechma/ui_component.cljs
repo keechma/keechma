@@ -194,7 +194,8 @@
                    :url-fn (:url-fn parent)
                    :current-route-fn (:current-route-fn parent)
                    :app-db (:app-db parent)
-                   :router (:router parent))))
+                   :router (:router parent)
+                   :context (:context parent))))
 
 (defn system
   "Creates a component system.

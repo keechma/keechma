@@ -170,7 +170,8 @@
                   :url-fn (partial app-state-core/url router)
                   :router router
                   :redirect-fn (partial app-state-core/redirect! router)
-                  :current-route-fn (fn [] current-route-reaction)})]
+                  :current-route-fn (fn [] current-route-reaction)
+                  :context (:context state)})]
     (assoc state :main-component
            (-> (ui/system (:components state) (or (:subscriptions state) {}))
                (resolved)))))

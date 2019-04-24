@@ -1809,3 +1809,28 @@
              (app-state/stop! app)
              (unmount)
              (done)))))
+
+
+(deftest application-context-is-passed-correctly-to-components
+  (reset! memory-router/app-route-states-atom {})
+  (let [[c unmount] (make-container)
+        app-definition {:html-element c
+                        :controllers {:m (->MemoryRouterRedirectController)}
+                        :router :memory
+                        :routes [["" {:baz :qux}]]
+                        :context {:foo "bar" :bar "baz"}
+                        :components {:main {:renderer
+                                            (fn [ctx]
+                                              [:div (get-in ctx [:context :foo]) [(ui/component ctx :child)]])
+                                            :component-deps [:child]}
+                                     :child {:renderer
+                                             (fn [ctx]
+                                               [:div (get-in ctx [:context :bar])])}}}
+        app (app-state/start! app-definition)]
+    (async done
+           (go
+             (<! (timeout 20))
+             (is (= "bar\nbaz" (.-innerText c)))
+             (app-state/stop! app)
+             (unmount)
+             (done)))))
