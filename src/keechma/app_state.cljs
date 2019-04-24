@@ -164,6 +164,7 @@
         current-route-reaction (reaction (:route @(:app-db state)))
         resolved
         (partial ui/component->renderer
+                 :main
                  {:commands-chan (:commands-chan state)
                   :reporter (partial (:reporter state) :component :out)
                   :app-db (:app-db state)
@@ -171,7 +172,8 @@
                   :router router
                   :redirect-fn (partial app-state-core/redirect! router)
                   :current-route-fn (fn [] current-route-reaction)
-                  :context (:context state)})]
+                  :context (:context state)
+                  :path []})]
     (assoc state :main-component
            (-> (ui/system (:components state) (or (:subscriptions state) {}))
                (resolved)))))

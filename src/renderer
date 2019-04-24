@@ -1,0 +1,35 @@
+keechma/app_state.cljs:166:        (partial ui/component->renderer
+keechma/app_state.cljs:196:                         (reagent/unmount-component-at-node container)))))
+keechma/ui_component/test_helpers.cljs:36:    (when (not (contains? (set (:component-deps this)) key))
+keechma/ui_component/test_helpers.cljs:37:      (throw (ex-info (str "Missing component-deps: " key) {})))
+keechma/ui_component.cljs:12:(declare component->renderer)
+keechma/ui_component.cljs:87:                                       (assoc c k (component->renderer this k v)))
+keechma/ui_component.cljs:101:(defrecord UIComponent [component-deps subscription-deps renderer]
+keechma/ui_component.cljs:104:(defn ^:private component-dep-graph [components]
+keechma/ui_component.cljs:107:                 (let [component-deps (:component-deps v)]
+keechma/ui_component.cljs:108:                   (if (util/in? component-deps :main)
+keechma/ui_component.cljs:110:                     (reduce #(dep/depend %1 k %2) graph component-deps)))
+keechma/ui_component.cljs:113:(defn ^:private missing-component-deps [components]
+keechma/ui_component.cljs:120:(defn ^:private component-with-deps [component-key component system]
+keechma/ui_component.cljs:121:  (let [dep-keys (:component-deps component)]
+keechma/ui_component.cljs:124:            missing-deps (missing-component-deps components)]  
+keechma/ui_component.cljs:126:          (throw (make-ex (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
+keechma/ui_component.cljs:129:                 :component-deps [])))
+keechma/ui_component.cljs:137:  (def news-component (constructor {:component-deps [:user-profile :similar-news]
+keechma/ui_component.cljs:143:  (resolve-dep :component-deps :components news-component :user-profile user-profile-component))
+keechma/ui_component.cljs:150:  - `resolve-component-dep` - Resolves a component dependency
+keechma/ui_component.cljs:152:  [dep-kw coll-kw component key component-dep]
+keechma/ui_component.cljs:154:      (assoc-in [coll-kw key] component-dep)
+keechma/ui_component.cljs:161:(def resolve-component-dep
+keechma/ui_component.cljs:163:  (partial resolve-dep :component-deps :components))
+keechma/ui_component.cljs:170:                (assoc system key (component-with-deps key component system))))) components sorted-keys))
+keechma/ui_component.cljs:172:(defn ^:private resolve-component-subscriptions [component subscriptions]
+keechma/ui_component.cljs:182:               (assoc components k (resolve-component-subscriptions c subscriptions)))
+keechma/ui_component.cljs:189:(defn ^:private component->renderer [parent component-key component]
+keechma/ui_component.cljs:235:  (def layout-component (constructor {:component-deps [:sidebar]
+keechma/ui_component.cljs:242:  (def sidebar-component (constructor {:component-deps [:chat-room-list]
+keechma/ui_component.cljs:266:     (let [graph (component-dep-graph components)
+keechma/ui_component.cljs:275:  - `:component-deps` - Which child component is this component dependent on
+keechma/ui_component.cljs:293:    (let [child-component (component ctx :component-key)
+keechma/ui_component.cljs:297:                               :component-deps [:component-key]
+keechma/ui_component.cljs:302:  (let [defaults {:component-deps []

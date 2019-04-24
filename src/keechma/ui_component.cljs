@@ -84,7 +84,7 @@
        nil)))
   (renderer [this]
     (let [child-renderers (reduce-kv (fn [c k v]
-                                       (assoc c k (component->renderer this v)))
+                                       (assoc c k (component->renderer k this v)))
                                      {} (:components this))
           renderer-context (assoc this :components child-renderers)]
       (with-meta (partial (:renderer this) renderer-context)
@@ -186,16 +186,20 @@
   (reduce-kv (fn [components k c]
                (assoc components k (assoc c :name k))) {} components))
 
-(defn ^:private component->renderer [parent component]
-  (renderer (assoc component
-                   :reporter (:reporter parent)
-                   :redirect-fn (:redirect-fn parent)
-                   :commands-chan (:commands-chan parent)
-                   :url-fn (:url-fn parent)
-                   :current-route-fn (:current-route-fn parent)
-                   :app-db (:app-db parent)
-                   :router (:router parent)
-                   :context (:context parent))))
+(defn ^:private component->renderer 
+  ([parent component]
+   (component->renderer nil parent component))
+  ([component-key parent component]
+   (renderer (assoc component
+                    :reporter (:reporter parent)
+                    :redirect-fn (:redirect-fn parent)
+                    :commands-chan (:commands-chan parent)
+                    :url-fn (:url-fn parent)
+                    :current-route-fn (:current-route-fn parent)
+                    :app-db (:app-db parent)
+                    :router (:router parent)
+                    :context (:context parent)
+                    :path (conj (:path parent) component-key)))))
 
 (defn system
   "Creates a component system.
