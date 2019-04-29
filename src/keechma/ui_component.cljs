@@ -116,16 +116,26 @@
                  (conj missing k)
                  missing)) [] components))
 
+(defn ^:private resolve-component-aliases [components system]
+  (reduce-kv 
+   (fn [m k v]
+     (if (keyword? v)
+       (assoc m k (get system v))
+       (assoc m k v)))
+   {}
+   components))
 
 (defn ^:private component-with-deps [component-key component system]
   (let [dep-keys (:component-deps component)]
     (if-not (empty? dep-keys)
-      (let [components (select-keys system dep-keys)
+      (let [components (resolve-component-aliases 
+                        (merge (select-keys system dep-keys) (:components component))
+                        system)
             missing-deps (missing-component-deps components)]  
         (if-not (empty? missing-deps)
           (throw (make-ex (str "Missing dependencies " (join ", " missing-deps) " for component " component-key)))
           (assoc component
-                 :components components
+                 :components components 
                  :component-deps [])))
       component)))
 
@@ -186,20 +196,27 @@
   (reduce-kv (fn [components k c]
                (assoc components k (assoc c :name k))) {} components))
 
+(defn ^:private default-ctx-processor [])
+
 (defn ^:private component->renderer 
   ([parent component]
    (component->renderer nil parent component))
   ([component-key parent component]
-   (renderer (assoc component
-                    :reporter (:reporter parent)
-                    :redirect-fn (:redirect-fn parent)
-                    :commands-chan (:commands-chan parent)
-                    :url-fn (:url-fn parent)
-                    :current-route-fn (:current-route-fn parent)
-                    :app-db (:app-db parent)
-                    :router (:router parent)
-                    :context (:context parent)
-                    :path (conj (:path parent) component-key)))))
+   (let [ctx-processor (or (::ctx-processor parent) identity)]
+     (renderer  
+      (ctx-processor
+       (assoc component
+              :reporter (:reporter parent)
+              :redirect-fn (:redirect-fn parent)
+              :commands-chan (:commands-chan parent)
+              :url-fn (:url-fn parent)
+              :current-route-fn (:current-route-fn parent)
+              :app-db (:app-db parent)
+              :router (:router parent)
+              :context (:context parent)
+              :path (conj (:path parent) component-key)
+              ::system (::system parent)
+              ::ctx-processor ctx-processor))))))
 
 (defn system
   "Creates a component system.
@@ -269,8 +286,9 @@
      (throw (make-ex "System must have a :main component!"))
      (let [graph (component-dep-graph components)
            sorted-keys (dep/topo-sort graph)
-           components-with-resolved-deps (resolve-subscriptions (assoc-name components) subscriptions)]
-       (:main (resolved-system components-with-resolved-deps sorted-keys))))))
+           components-with-resolved-deps (resolve-subscriptions (assoc-name components) subscriptions)
+           system (resolved-system components-with-resolved-deps sorted-keys)]
+       (assoc (:main system) ::system system)))))
 
 (defn constructor
   "Createas a UIComponent record. Accepts `opts` as the argument. `opts` is
@@ -307,5 +325,6 @@
                   :subscription-deps []
                   :topic :ui
                   :renderer (fn [c]
-                              [:h1 "MISSING RENDERER!"])}]
+                              [:h1 "MISSING RENDERER!"])}
+        opts' (merge defaults opts)]
     (map->UIComponent (merge defaults opts))))

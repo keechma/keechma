@@ -1837,31 +1837,32 @@
 (deftest component-knows-its-path
   (let [[c unmount] (make-container)
         paths$ (atom #{})
-        app-definition {:html-element c
-                        :router :memory
-                        :components {:main
-                                     (ui/constructor
-                                      {:renderer (fn [ctx]
-                                                   (fn []
-                                                     (swap! paths$ conj (:path ctx))
-                                                     [:div "MAIN"
-                                                      [(ui/component ctx :child-1)]
-                                                      [(ui/component ctx :child-2)]]))
-                                       :component-deps [:child-1 :child-2]})
-                                     :child-1
-                                     (ui/constructor
-                                      {:renderer (fn [ctx]
-                                                   (swap! paths$ conj (:path ctx))
-                                                   (fn []
-                                                     [:div "CHILD 1"
-                                                      [(ui/component ctx :child-2)]]))
-                                       :component-deps [:child-2]})
-                                     :child-2
-                                     (ui/constructor
-                                      {:renderer (fn [ctx]
-                                                   (swap! paths$ conj (:path ctx))
-                                                   (fn []
-                                                     [:div "CHILD 2"]))})}}
+        app-definition 
+        {:html-element c
+         :router :memory
+         :components {:main
+                      (ui/constructor
+                       {:renderer (fn [ctx]
+                                    (fn []
+                                      (swap! paths$ conj (:path ctx))
+                                      [:div "MAIN"
+                                       [(ui/component ctx :child-1)]
+                                       [(ui/component ctx :child-2)]]))
+                        :component-deps [:child-1 :child-2]})
+                      :child-1
+                      (ui/constructor
+                       {:renderer (fn [ctx]
+                                    (swap! paths$ conj (:path ctx))
+                                    (fn []
+                                      [:div "CHILD 1"
+                                       [(ui/component ctx :child-2)]]))
+                        :component-deps [:child-2]})
+                      :child-2
+                      (ui/constructor
+                       {:renderer (fn [ctx]
+                                    (swap! paths$ conj (:path ctx))
+                                    (fn []
+                                      [:div "CHILD 2"]))})}}
         app (app-state/start! app-definition)]
     (async done
            (go

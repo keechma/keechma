@@ -159,9 +159,14 @@
       :memory       (start-selected-router! state memory-router/constructor)
       state)))
 
+(defn ^:private default-ui-context-processor [_ ctx]
+  ctx)
+
 (defn ^:private resolve-main-component [state]
   (let [router (:router state)
         current-route-reaction (reaction (:route @(:app-db state)))
+        ctx-processor (:keechma.ui-component/ctx-processor state) 
+        main-component (ui/system (:components state) (or (:subscriptions state) {}))
         resolved
         (partial ui/component->renderer
                  :main
@@ -173,10 +178,10 @@
                   :redirect-fn (partial app-state-core/redirect! router)
                   :current-route-fn (fn [] current-route-reaction)
                   :context (:context state)
-                  :path []})]
-    (assoc state :main-component
-           (-> (ui/system (:components state) (or (:subscriptions state) {}))
-               (resolved)))))
+                  :path []
+                  :keechma.ui-component/ctx-processor ctx-processor
+                  :keechma.ui-component/system (:keechma.ui-component/system main-component)})]
+    (assoc state :main-component (resolved main-component))))
 
 (defn app-renderer [state]
   [(with-meta

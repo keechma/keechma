@@ -17,7 +17,7 @@
                       :users {:component-deps [:user-profile]}
                       :current-user {}
                       :user-profile {}}
-          system (ui/system components)]
+          system (dissoc (ui/system components) :keechma.ui-component/system)]
       (is (= system {:name :main
                      :component-deps []
                      :components {:sidebar {:name :sidebar
@@ -53,10 +53,10 @@
                   :layout (ui/resolve-component-dep
                            {:component-deps [:main-panel :filter-bar]}
                            :main-panel {:is-main-panel? true})
-                  :sidebar (ui/system system-a)
+                  :sidebar (dissoc (ui/system system-a) :keechma.ui-component/system)
                   :filter-bar {:is-filter-bar? true}
                   :footer {}}]
-    (= (ui/system system-b)
+    (= (dissoc (ui/system system-b) :keechma.ui-component/system)
        {:component-deps []
         :components {:layout {:name :layout
                               :component-deps []
@@ -159,3 +159,24 @@
                    (close! commands-chan)
                    (unmount)
                    (done))))))))
+
+(deftest resolved-component-wont-be-overriden
+  (let [components {:main {:component-deps [:sidebar :users]
+                           :components {:users :faux-users}}
+                    :sidebar {:component-deps [:current-user]}
+                    :users {:component-deps [:user-profile]}
+                    :faux-users {:component-deps [:users]}
+                    :current-user {}
+                    :user-profile {}}
+        system (ui/system components)]
+    (is (= (dissoc system :keechma.ui-component/system)
+           {:name :main
+            :component-deps []
+            :components {:sidebar {:component-deps []
+                                   :name :sidebar
+                                   :components {:current-user {:name :current-user}}}
+                         :users {:component-deps []
+                                 :name :faux-users
+                                 :components {:users {:component-deps []
+                                                      :name :users
+                                                      :components {:user-profile {:name :user-profile}}}}}}}))))
