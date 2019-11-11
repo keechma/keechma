@@ -154,7 +154,7 @@
   ;; Returns a new version of the `news-component` with the :user-profile component resolved
   ```
 
-  Two shorthand functions are defined that allow you to omit first two arguments:
+  Two shorthand functions are defined that allow you to omit the first two arguments:
   
   - `resolve-subscription-dep` - Resolves a subscription dependency
   - `resolve-component-dep` - Resolves a component dependency
@@ -222,7 +222,7 @@
   "Creates a component system.
 
   Component system is a group of components that are interdependent. Each component
-  system must define a `:main` component which will be returned from the `system`
+  system must define a `:main` component that will be returned from the `system`
   function.
 
   `system` function resolves dependencies between components.
@@ -239,7 +239,7 @@
   Chat room list component has a subscription dependency on `:chat-rooms` which will
   return the list of chat rooms to render.
 
-  Usually you would either pass the chat rooms subscription from layout to sidebar to the
+  Usually, you would either pass the chat rooms subscription from layout to sidebar to the
   chat room list component, or the chat room list component would have a dependency
   on a global `:chat-rooms` subscription.
 
@@ -268,7 +268,7 @@
 
   (def chat-room-list-component (constructor {:subscription-deps [:chat-rooms]}))
 
-  (def main-component (system {:main layout-component ;; Map compnents to keys
+  (def main-component (system {:main layout-component ;; Map components to keys
   :sidebar sidebar-component
   :chat-room-list chat-room-list-component}
   {:chat-rooms (fn [app-state-atom])})) ;; Map subscriptions to keys
@@ -291,7 +291,7 @@
        (assoc (:main system) ::system system)))))
 
 (defn constructor
-  "Createas a UIComponent record. Accepts `opts` as the argument. `opts` is
+  "Creates a UIComponent record. Accepts `opts` as the argument. `opts` is
   a map that can have the following params:
 
   - `:component-deps` - Which child component is this component dependent on
@@ -300,8 +300,8 @@
   - `:renderer` - A renderer function (Reagent component)
 
   The UIComponent record is a way to list all the dependencies for a component. When
-  the application is started each component's renderer function will be partiall 
-  applied with a verion of it's UIComponent that has the component and subscription
+  the application is started each component's renderer function will be partially 
+  applied with a version of its UIComponent that has the component and subscription
   dependencies resolved.
 
   This allows you to write components that are completely decoupled from the rest
