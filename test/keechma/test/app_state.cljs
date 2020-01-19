@@ -2,7 +2,6 @@
   (:require [cljs.test :refer-macros [deftest is async]] 
             [cljsjs.react.dom]
             [cljsjs.react]
-            [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.app-state :as app-state]
@@ -12,7 +11,7 @@
             [keechma.app-state.history-router :as history-router]
             [keechma.app-state.core :refer [reg-on-start reg-on-stop]]
             [keechma.ssr :as ssr]
-            [keechma.test.util :refer [make-container]]
+            [keechma.test.util :refer [make-container click]]
             [clojure.string :as str]
             [keechma.app-state.memory-router :as memory-router])
   (:require-macros [cljs.core.async.macros :as m :refer [go go-loop alt!]]
@@ -48,10 +47,10 @@
         app-db-atom (:app-db app)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "PAGE1" (get-in @app-db-atom [:route :data :page])))
              (set! (.-hash (.-location js/window)) "!page2")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "PAGE2" (get-in @app-db-atom [:route :data :page])))
              (app-state/stop! app (fn []
                                     (unmount)
@@ -115,11 +114,11 @@
         app-db-atom (:app-db app)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "login" (get-in @app-db-atom [:route :data :page])))
              (swap! app-db-atom assoc-in [:kv :user] {:id 1})
              (controller/reroute (get-in @app-db-atom [:internal :running-controllers :reroute]))
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "dashboard" (get-in @app-db-atom [:route :data :page])))
              (app-state/stop! app (fn []
                                     (is (= [[:reroute :start true]
@@ -155,11 +154,11 @@
         app-db-atom (:app-db app)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "login" (get-in @app-db-atom [:route :data :page])))
              (swap! app-db-atom assoc-in [:kv :user] {:id 1})
              (@ui-reroute)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "dashboard" (get-in @app-db-atom [:route :data :page])))
              (app-state/stop! app (fn []
                                     (is (= [[:reroute :start true]
@@ -302,7 +301,7 @@
            (go
              (<! (timeout 100))
              (let [button-node (sel1 c [:button])]
-               (sim/click button-node nil)
+               (click button-node nil)
                (<! (timeout 100))
                (is (= (.. js/window -location -hash) "#!?baz=qux"))
                (set! (.-hash js/location) "")
@@ -340,7 +339,7 @@
              (<! (timeout 100))
              (let [h1-v1 (sel1 c [:h1])]
                (is (= (.-innerText h1-v1) "0"))
-               (sim/click (sel1 c [:button]) nil)
+               (click (sel1 c [:button]) nil)
                (<! (timeout 10))
                (is (= (.-innerText h1-v1) "1"))
                (app-state/stop! app-v1)
@@ -357,7 +356,7 @@
                        (app-state/restore-app-db app-v1 app-v3)
                        (<! (timeout 50))
                        (is (= (.-innerText h1-v3) "1"))
-                       (sim/click (sel1 c [:button]) nil)
+                       (click (sel1 c [:button]) nil)
                        (<! (timeout 10))
                        (is (= (.-innerText h1-v3) "2"))
                        (app-state/stop! app-v3)
@@ -455,7 +454,7 @@
              (app-state/start! app-definition false)
              (<! (timeout 1))
              (is (= @kv-state-atom {:foo :bar :start :value}))
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= @kv-state-atom {:foo :bar :baz :qux :start :value}))
              (done)))))
 
@@ -488,10 +487,10 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 1 @reaction-call-count))
              (app-state/stop! app)
@@ -521,10 +520,10 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 2 @reaction-call-count))
              (app-state/stop! app)
@@ -553,12 +552,12 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>42</div><div>42</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>43</div><div>43</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 @reaction-call-count))
              (app-state/stop! app)
              (unmount)
@@ -587,10 +586,10 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>43</div><div>44</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (swap! (:app-db app) assoc-in [:kv :number] 43)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "<div>44</div><div>45</div>" (.-innerHTML (sel1 c [:.main-subscriptions]))))
              (is (= 2 @reaction-call-count))
              (app-state/stop! app)
@@ -611,18 +610,18 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "FOO =" (.-innerText (sel1 c [:.main-route]))))
              (set! (.-hash js/location) "#!?foo=foo")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "FOO = foo" (.-innerText (sel1 c [:.main-route]))))
              (swap! (:app-db app) assoc-in [:kv :foo] "bar")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 2 @renderer-call-count))
              (app-state/stop! app)
              (unmount)
              (set! (.-hash js/location) "")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (done)))))
 
 (deftest cached-route-subscription-form-1
@@ -638,18 +637,18 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "FOO =" (.-innerText c)))
              (set! (.-hash js/location) "#!?foo=foo")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "FOO = foo" (.-innerText c)))
              (swap! (:app-db app) assoc-in [:kv :foo] "bar")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 2 @renderer-call-count))
              (app-state/stop! app)
              (unmount)
              (set! (.-hash js/location) "")
-             (<! (timeout 20))
+             (<! (timeout 50))
              (done)))))
 
 (deftest hashchange-router-redirect
@@ -674,30 +673,30 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
-             (sim/click (sel1 c [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
                      :page "page-name2"}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
              (let [back-to-route (get-in @(:app-db app) [:route :data])]
-               (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-               (<! (timeout 20))
+               (click (sel1 c [:.replace-link-el]) {:button 0})
+               (<! (timeout 50))
                (is (= (get-in @(:app-db app) [:route :data])
                       {:foo "Bar"
                        :page "page-name2"}))
                (app-state/stop! app)
                (unmount)
                (set! (.-hash js/location) "")
-               (<! (timeout 20))
+               (<! (timeout 50))
                (done))))))
 
 (deftest history-base-href
@@ -720,20 +719,20 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
-             (sim/click (sel1 c [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
                      :page "page-name2"}))
              (app-state/stop! app)
              (unmount)
              (.pushState js/history nil "", current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
 
@@ -753,13 +752,13 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
-             (sim/click (sel1 c [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (.-pathname js/location) "/app/page-name2"))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
@@ -767,7 +766,7 @@
              (app-state/stop! app)
              (unmount)
              (.pushState js/history nil "", current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
 
@@ -794,31 +793,31 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
-             (sim/click (sel1 c [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
                      :page "page-name2"}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
              (let [back-to-route (get-in @(:app-db app) [:route :data])]
-               (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-               (<! (timeout 20))
+               (click (sel1 c [:.replace-link-el]) {:button 0})
+               (<! (timeout 50))
                (is (= (get-in @(:app-db app) [:route :data])
                       {:foo "Bar"
                        :page "page-name2"}))
                (app-state/stop! app)
                (unmount)
                (.pushState js/history nil "", current-href)
-               (<! (timeout 20))
+               (<! (timeout 50))
                (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
                (done))))))
 
@@ -847,22 +846,22 @@
         app2 (app-state/start! app-definition2)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 2 ((:handlers-count history-router/urlchange-dispatcher))))
 
              (is (= (get-in @(:app-db app1) [:route :data])
                     (get-in @(:app-db app2) [:route :data])
                     {:page "test"}))
 
-             (sim/click (sel1 c1 [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app1) [:route :data])
                     (get-in @(:app-db app2) [:route :data])
                     {:page "app1"
                      :foo "Bar"}))
              
-             (sim/click (sel1 c2 [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c2 [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app1) [:route :data])
                     (get-in @(:app-db app2) [:route :data])
                     {:page "app2"
@@ -872,7 +871,7 @@
              (unmount1)
              (unmount2)
              (.pushState js/history nil "", current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
@@ -901,7 +900,7 @@
         app2 (app-state/start! app-definition2)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db app1) [:route :data])
                     {:page "test1"}))
@@ -913,8 +912,8 @@
              (is (= "#!test2" (.-hash js/location)))
 
 
-             (sim/click (sel1 c1 [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db app1) [:route :data])
                     {:page "app1" :foo "Bar"}))
@@ -927,7 +926,7 @@
              (is (= "#!test2" (.-hash js/location)))
              
              (.click (.getElementById js/document "hashtag-link"))
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db app1) [:route :data])
                     {:page "app1" :foo "Bar"}))
@@ -945,7 +944,7 @@
              (unmount1)
              (unmount2)
              (.pushState js/history nil "", current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (done)))))
 
@@ -979,7 +978,7 @@
         outer-app (app-state/start! outer-app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db outer-app) [:route :data])
                     {:page "test1"}))
@@ -991,8 +990,8 @@
              (is (= "#!test2" (.-hash js/location)))
 
 
-             (sim/click (sel1 c1 [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c1 [:.link-el]) {:button 0})
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db outer-app) [:route :data])
                     {:page "outer-app" :foo "Bar"}))
@@ -1005,7 +1004,7 @@
              (is (= "#!test2" (.-hash js/location)))
              
              (.click (.getElementById js/document "hashtag-link"))
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (is (= (get-in @(:app-db outer-app) [:route :data])
                     {:page "outer-app" :foo "Bar"}))
@@ -1023,7 +1022,7 @@
              (unmount1)
              (unmount2)
              (.pushState js/history nil "" current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
 
              (done)))))
 
@@ -1043,19 +1042,19 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 ((:handlers-count history-router/urlchange-dispatcher))))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
-             (sim/click (sel1 c [:.link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:foo "Bar"
                      :page "page-name2"}))
 
              (.back js/history)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (get-in @(:app-db app) [:route :data])
                     {:baz "qux"
                      :page "page-name"}))
@@ -1063,7 +1062,7 @@
              (app-state/stop! app)
              (unmount)
              (.pushState js/history nil "", current-href)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 0 ((:handlers-count history-router/urlchange-dispatcher))))
              (done)))))
 
@@ -1091,7 +1090,7 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 3 @call-count))
              (app-state/stop! app)
              (unmount)
@@ -1116,7 +1115,7 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= 1 @call-count))
              (app-state/stop! app)
              (unmount)
@@ -1144,10 +1143,10 @@
                (set! (.-innerHTML c) html)
                (is (= "Link" (.-innerText c)))
                (let [app (app-state/start! app-definition)]
-                 (<! (timeout 20))
+                 (<! (timeout 50))
                  (is (= "Link" (.-innerText c)))
-                 (sim/click (sel1 c [:.link-el]) {:button 0})
-                 (<! (timeout 20))
+                 (click (sel1 c [:.link-el]) {:button 0})
+                 (<! (timeout 50))
                  (is (= (get-in @(:app-db app) [:route :data])
                         {:foo "Bar"
                          :page "page-name2"}))
@@ -1177,10 +1176,10 @@
                (set! (.-innerHTML c) html)
                (is (= "Link" (.-innerText c)))
                (let [app (app-state/start! app-definition)]
-                 (<! (timeout 20))
+                 (<! (timeout 50))
                  (is (= "Link" (.-innerText c)))
-                 (sim/click (sel1 c [:.link-el]) {:button 0})
-                 (<! (timeout 20))
+                 (click (sel1 c [:.link-el]) {:button 0})
+                 (<! (timeout 50))
                  (is (= (get-in @(:app-db app) [:route :data])
                         {:foo "Bar"
                          :page "PAGE-NAME2"}))
@@ -1288,7 +1287,7 @@
     (async done
            (go
              (app-state/start! app)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (unmount)
              (done)))))
 
@@ -1345,7 +1344,7 @@
     (async done
            (go
              (let [started-app (app-state/start! app)]
-               (<! (timeout 20))
+               (<! (timeout 50))
                (is (= {:a ::payload
                        :b ::payload
                        :c ::payload}
@@ -1461,17 +1460,17 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:foo :bar}]}))
-             (sim/click (sel1 c [:.push-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:push :baz}
                      :stack [{:foo :bar} {:push :baz}]}))
-             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:replace :qux}
                      :stack [{:foo :bar} {:replace :qux}]}))
@@ -1497,17 +1496,17 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
-             (sim/click (sel1 c [:.push-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:push :baz}
                      :stack [{} {:push :baz}]}))
-             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:replace :qux}
                      :stack [{} {:replace :qux}]}))
@@ -1537,27 +1536,27 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:foo :bar}]}))
-             (sim/click (sel1 c [:.push-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:push :baz}
                      :stack [{:foo :bar} {:push :baz}]}))
-             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:replace :qux}
                      :stack [{:foo :bar} {:replace :qux}]}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:foo :bar}]}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:foo :bar}]}))
@@ -1587,27 +1586,27 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
-             (sim/click (sel1 c [:.push-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.push-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:push :baz}
                      :stack [{} {:push :baz}]}))
-             (sim/click (sel1 c [:.replace-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.replace-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:replace :qux}
                      :stack [{} {:replace :qux}]}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
-             (sim/click (sel1 c [:.back-link-el]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.back-link-el]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
@@ -1634,27 +1633,27 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-2]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-2]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:baz :qux}
                      :stack [{} {:foo :bar} {:baz :qux}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{} {:foo :bar}]}))
@@ -1682,27 +1681,27 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:baz :qux}
                      :stack [{:baz :qux}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-2]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-2]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:baz :qux}
                      :stack [{:baz :qux}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
@@ -1730,17 +1729,17 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {}
                      :stack [{}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{} {:foo :bar}]}))
              (app-state/stop! app)
-             (<! (timeout 20))
+             (<! (timeout 50))
              (let [app2 (app-state/start! app-definition)]
                (is (= (:route @(:app-db app2))
                       {:data {:foo :bar}
@@ -1781,27 +1780,27 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:baz :qux}
                      :stack [{:baz :qux}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-2]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-2]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:baz :qux}
                      :stack [{:baz :qux}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
-             (sim/click (sel1 c [:.link-el-1]) {:button 0})
-             (<! (timeout 20))
+             (click (sel1 c [:.link-el-1]) {:button 0})
+             (<! (timeout 50))
              (is (= (:route @(:app-db app))
                     {:data {:foo :bar}
                      :stack [{:baz :qux} {:foo :bar}]}))
@@ -1828,7 +1827,7 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= "bar\nbaz" (.-innerText c)))
              (app-state/stop! app)
              (unmount)
@@ -1866,7 +1865,7 @@
         app (app-state/start! app-definition)]
     (async done
            (go
-             (<! (timeout 20))
+             (<! (timeout 50))
              (is (= #{[:main] [:main :child-1] [:main :child-1 :child-2] [:main :child-2]}
                     @paths$))
              (app-state/stop! app)

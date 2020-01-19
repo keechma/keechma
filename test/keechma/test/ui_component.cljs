@@ -3,11 +3,10 @@
             [cljsjs.react.dom]
             [cljsjs.react]
             [reagent.core :as reagent]
-            [cljs-react-test.simulate :as sim]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.ui-component :as ui]
-            [keechma.test.util :refer [make-container]])
+            [keechma.test.util :refer [make-container click]])
   (:require-macros [cljs.core.async.macros :as m :refer [go go-loop]]))
 
 (deftest system []
@@ -75,12 +74,15 @@
                           :renderer
                           (fn [ctx]
                             [:div
-                             [:input {:type :submit
-                                      :on-click #(ui/send-command ctx :outer-command "outer-arg")}]
+                             [:input 
+                              {:type :submit
+                               :on-click #(ui/send-command ctx :outer-command "outer-arg")}]
                              [(ui/component ctx :some-component)]])})
-        inner-render (fn [ctx]
-                       [:button {:on-click #(ui/send-command ctx :inner-command "inner-arg")}])
-        inner-component (ui/constructor {:renderer inner-render})
+        inner-component (ui/constructor
+                         {:renderer (fn [ctx]
+                                      [:button 
+                                       {:on-click #(ui/send-command ctx :inner-command "inner-arg")}
+                                       "Click Me!"])})
 
         system (ui/system {:main (assoc outer-component :topic :outer)
                            :some-component (assoc inner-component :topic :inner)})
@@ -92,10 +94,10 @@
         button-node (sel1 c [:button])
         submit-node (sel1 c [:input])]
     (async done
-           (go
-             (sim/click button-node nil)
+           (go 
+             (click button-node)
              (is (= [[:inner :inner-command] "inner-arg"] (take 2 (<! commands-chan))))
-             (sim/click submit-node nil)
+             (click submit-node)
              (is (= [[:outer :outer-command] "outer-arg"] (take 2 (<! commands-chan))))
              (unmount)
              (done)))))
@@ -106,7 +108,6 @@
                                    :renderer (fn [ctx] (ui/subscription ctx :count-sub))})
         renderer (ui/renderer component)]
     (is (= (renderer) 10))))
-
 
 (deftest subscriptions-with-arguments []
   (let [count-sub (fn [_ count] count)

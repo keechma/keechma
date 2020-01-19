@@ -34,21 +34,23 @@
   (let [plan {:stop          {}
               :start         {}
               :wake          {}
-              :route-changed []}
-        running-controller-keys-set (set (keys running-controllers))]
-    (reduce (fn [acc [topic controller]]
-              (let [{:keys [stop start wake route-changed]} acc
-                    new-params (controller/params controller route-params)
-                    running-controller (get running-controllers topic)
-                    prev-params (:params running-controller)]
-                (cond
-                  (= SerializedController (type running-controller)) (assoc acc :wake (assoc wake topic new-params))
-                  (and (nil? prev-params) (nil? new-params))  acc
-                  (and (nil? prev-params) (some? new-params)) (assoc acc :start (assoc start topic new-params))
-                  (and (some? prev-params) (nil? new-params)) (assoc acc :stop (assoc stop topic new-params))
-                  (not= new-params prev-params)               (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
-                  (= new-params prev-params)    (assoc acc :route-changed (conj route-changed topic))
-                  :else acc))) plan controllers)))
+              :route-changed []}]
+    (reduce 
+     (fn [acc [topic controller]]
+       (let [{:keys [stop start wake route-changed]} acc
+             new-params                              (controller/params controller route-params)
+             running-controller                      (get running-controllers topic)
+             prev-params                             (:params running-controller)]
+         (cond
+           (= SerializedController (type running-controller)) (assoc acc :wake (assoc wake topic new-params))
+           (and (nil? prev-params) (nil? new-params))         acc
+           (and (nil? prev-params) (some? new-params))        (assoc acc :start (assoc start topic new-params))
+           (and (some? prev-params) (nil? new-params))        (assoc acc :stop (assoc stop topic new-params))
+           (not= new-params prev-params)                      (assoc acc :stop (assoc stop topic new-params) :start (assoc start topic new-params))
+           (= new-params prev-params)                         (assoc acc :route-changed (conj route-changed topic))
+           :else                                              acc))) 
+     plan 
+     controllers)))
 
 (defn apply-stop-controllers [app-db reporter stop]
   (let [running-controllers (get-in app-db [:internal :running-controllers])]
@@ -200,42 +202,42 @@
   "
 
   [route-chan route-processor commands-chan app-db-atom controllers reporter]
-  (let [current-route-value (atom (:route @app-db-atom))]
-    (reporter :app :in nil :start (reduce (fn [acc [k _]] (conj acc k)) [] controllers) (reporter/cmd-info) :info)
-    (apply-route-change reporter (route-processor (:route @app-db-atom) @app-db-atom) app-db-atom commands-chan controllers)
-    (let [stop-route-block (chan)
-          stop-command-block (chan)
-          running-chans
-          [(go-loop []
-             ;; When route changes:
-             ;;   - stop controllers that return nil from their params functions
-             ;;   - start controllers that need to be started
-             ;;   - restart controllers that were running with the different params (stop the old instance and start the new one)
-             ;;   - send "route-changed" command to controllers that were already running 
-             (let [[val channel] (alts! [stop-route-block route-chan])]
-               (when (and (not= channel stop-route-block) val)
-                 (reset! current-route-value val)
-                 (let [route-params (route-processor val @app-db-atom)]
-                   (when (not= route-params (:route @app-db-atom))
-                     (apply-route-change reporter route-params app-db-atom commands-chan controllers))
-                   (recur)))))
-           (go-loop []
-             (let [[val channel] (alts! [stop-command-block commands-chan])]
-               (when-not (= channel stop-command-block)
-                 (let [[command-name command-args cmd-info] val 
-                       running-controllers (get-in @app-db-atom [:internal :running-controllers])]
-                   (when (not (nil? command-name))
-                     (if (= ::reroute command-name)
-                       (put! route-chan @current-route-value)
-                       (route-command-to-controller reporter running-controllers command-name command-args cmd-info)))
-                   (recur)))))]]
-      {:running-chans running-chans
-       :stop (fn []
-               (reporter :app :in nil :stop nil (reporter/cmd-info) :info)
-               (let [controllers (get-in @app-db-atom [:internal :running-controllers])]
-                 (close! stop-route-block)
-                 (close! stop-command-block)
-                 (doseq [running running-chans] (close! running))
-                 (reset! app-db-atom
-                         (apply-stop-controllers @app-db-atom reporter (reduce (fn [acc [key controller]] (assoc acc key {})) {} controllers)))))})))
+  (reporter :app :in nil :start (vec (keys controllers)) (reporter/cmd-info) :info)
+  (apply-route-change reporter (route-processor (:route @app-db-atom) @app-db-atom) app-db-atom commands-chan controllers)
+  (let [current-route-value (atom (:route @app-db-atom))
+        stop-route-block (chan)
+        stop-command-block (chan)
+        running-chans
+        [(go-loop []
+           ;; When route changes:
+           ;;   - stop controllers that return nil from their params functions
+           ;;   - start controllers that need to be started
+           ;;   - restart controllers that were running with the different params (stop the old instance and start the new one)
+           ;;   - send "route-changed" command to controllers that were already running 
+           (let [[val channel] (alts! [stop-route-block route-chan])]
+             (when (and (not= channel stop-route-block) val)
+               (reset! current-route-value val)
+               (let [route-params (route-processor val @app-db-atom)]
+                 (when (not= route-params (:route @app-db-atom))
+                   (apply-route-change reporter route-params app-db-atom commands-chan controllers))
+                 (recur)))))
+         (go-loop []
+           (let [[val channel] (alts! [stop-command-block commands-chan])]
+             (when-not (= channel stop-command-block)
+               (let [[command-name command-args cmd-info] val 
+                     running-controllers (get-in @app-db-atom [:internal :running-controllers])]
+                 (when (not (nil? command-name))
+                   (if (= ::reroute command-name)
+                     (put! route-chan @current-route-value)
+                     (route-command-to-controller reporter running-controllers command-name command-args cmd-info)))
+                 (recur)))))]]
+    {:running-chans running-chans
+     :stop (fn []
+             (reporter :app :in nil :stop nil (reporter/cmd-info) :info)
+             (let [controllers (get-in @app-db-atom [:internal :running-controllers])]
+               (close! stop-route-block)
+               (close! stop-command-block)
+               (doseq [running running-chans] (close! running))
+               (reset! app-db-atom
+                       (apply-stop-controllers @app-db-atom reporter (reduce (fn [acc [key controller]] (assoc acc key nil)) {} controllers)))))}))
 
