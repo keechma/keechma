@@ -340,16 +340,16 @@
              (let [h1-v1 (sel1 c [:h1])]
                (is (= (.-innerText h1-v1) "0"))
                (click (sel1 c [:button]) nil)
-               (<! (timeout 10))
+               (<! (timeout 50))
                (is (= (.-innerText h1-v1) "1"))
                (app-state/stop! app-v1)
-               (<! (timeout 10))
+               (<! (timeout 50))
                (let [app-v2 (app-state/start! app-definition)]
                  (<! (timeout 100))
                  (let [h1-v2 (sel1 c [:h1])]
                    (is (= (.-innerText h1-v2) "0"))
                    (app-state/stop! app-v2)
-                   (<! (timeout 10))
+                   (<! (timeout 50))
                    (let [app-v3 (app-state/start! app-definition)]
                      (<! (timeout 100))
                      (let [h1-v3 (sel1 c [:h1])]
@@ -357,7 +357,7 @@
                        (<! (timeout 50))
                        (is (= (.-innerText h1-v3) "1"))
                        (click (sel1 c [:button]) nil)
-                       (<! (timeout 10))
+                       (<! (timeout 50))
                        (is (= (.-innerText h1-v3) "2"))
                        (app-state/stop! app-v3)
                        (unmount)
@@ -383,20 +383,20 @@
            (go
              (is (= nil @route-atom))
              (app-state/start! app-definition false)
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}
                     (:data @route-atom)))
              (rn-router/navigate! :push {:key :foo})
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 1
                      :key :foo
                      :routes [{:key :init}
                               {:key :foo}]}
                     (:data @route-atom)))
              (rn-router/navigate! :push {:key :bar})
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 2
                      :key :bar
                      :routes [{:key :init}
@@ -404,20 +404,20 @@
                               {:key :bar}]}
                     (:data @route-atom)))
              (rn-router/navigate! :pop)
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 1
                      :key :foo
                      :routes [{:key :init}
                               {:key :foo}]}
                     (:data @route-atom)))
              (rn-router/navigate! :home)
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}
                     (:data @route-atom)))
              (rn-router/navigate! :pop)
-             (<! (timeout 10))
+             (<! (timeout 50))
              (is (= {:index 0
                      :key :init
                      :routes [{:key :init}]}

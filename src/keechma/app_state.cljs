@@ -91,14 +91,14 @@
                          {:handlers handlers})]
     (t/read reader serialized-state)))
 
-(defn ^:private app-db [initial-data]
+(defn app-db [initial-data]
   (reagent/atom (merge {:route {}
                         :entity-db {}
                         :kv {}
                         :internal {}}
                        initial-data)))
 
-(defn ^:private default-config [initial-data]
+(defn default-config [initial-data]
   {:name :application
    :reporter (fn [app-name type direction topic name payload cmd-info severity])
    :router :hashchange
@@ -115,29 +115,29 @@
    :on {:stop []
         :start []}})
 
-(defn ^:private process-config [config]
+(defn process-config [config]
   (let [name [(:name config) (keyword (gensym "v"))]
         reporter (partial (:reporter config) name)]
     (assoc config
            :name name
            :reporter reporter)))
 
-(defn ^:private add-reporter-to-controllers [controllers reporter]
+(defn add-reporter-to-controllers [controllers reporter]
   (reduce-kv (fn [m k v]
                (assoc m k (assoc v :reporter reporter))) {} controllers))
 
-(defn ^:private add-redirect-fn-to-controllers [controllers router]
+(defn add-redirect-fn-to-controllers [controllers router]
   (reduce-kv (fn [m k v]
                (let [new-v (assoc v
                                   :redirect-fn (partial app-state-core/redirect! router)
                                   :router router)]
                  (assoc m k new-v))) {} controllers))
 
-(defn ^:private add-context-to-controllers [controllers context]
+(defn add-context-to-controllers [controllers context]
   (reduce-kv (fn [m k v]
                (assoc m k (assoc v :context context))) {} controllers))
 
-(defn ^:private add-stop-fn [state stop-fn]
+(defn add-stop-fn [state stop-fn]
   (assoc state :stop-fns (conj (:stop-fns state) stop-fn)))
 
 (defn start-selected-router! [state constructor]
@@ -159,10 +159,10 @@
       :memory       (start-selected-router! state memory-router/constructor)
       state)))
 
-(defn ^:private default-ui-context-processor [_ ctx]
+(defn default-ui-context-processor [_ ctx]
   ctx)
 
-(defn ^:private resolve-main-component [state]
+(defn resolve-main-component [state]
   (let [router (:router state)
         current-route-reaction (reaction (:route @(:app-db state)))
         ctx-processor (:keechma.ui-component/ctx-processor state) 
@@ -194,14 +194,14 @@
            [main-component])))
      {:name (str (flatten (:name state)))})])
 
-(defn ^:private mount-to-element! [state]
+(defn mount-to-element! [state]
   (let [main-component (:main-component state) 
         container (:html-element state)]
     (reagent/render-component (app-renderer state) container)
     (add-stop-fn state (fn [s] 
                          (reagent/unmount-component-at-node container)))))
 
-(defn ^:private start-controllers [state]
+(defn start-controllers [state]
   (let [router (:router state)
         route-processor (:route-processor state)
         reporter (:reporter state)
@@ -229,7 +229,7 @@
            (swap! cache assoc [app-db-atom-hash key args] sub-reaction)
            sub-reaction))))])
 
-(defn ^:private start-subs-cache [state]
+(defn start-subs-cache [state]
   (let [subscriptions (:subscriptions state)
         subs-cache (:subscriptions-cache state)
         cached-subscriptions (into {} (map #(add-sub-cache subs-cache %) subscriptions))]

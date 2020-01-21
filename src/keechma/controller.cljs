@@ -78,6 +78,22 @@
           (when action-fn (action-fn app-db-atom args))
           (when command (recur))))))
 
+(defn assoc-static-params [controller params]
+  "Assoces static params to the controller. If static params
+   exist on the controller, controller manager will use them
+   instead of calling the `params` function. This is useful when
+   you want to start a child controller and pass params from the parent"
+  (assoc controller ::static-params params))
+
+(defn dissoc-static-params [controller]
+  "Dissoces static params from the controller."
+  (dissoc controller ::static-params))
+
+(defn get-static-params [controller]
+  "Gets static params from the controller."
+  (get controller ::static-params))
+
+
 (defrecord SerializedController [params])
 
 (defn record-type [record & args] (type record))
@@ -142,6 +158,35 @@
 (defmulti router
   "Returns the app's router"
   record-type)
+(defmulti register-child-controller
+  "Register a child controller. This controller will be added to the controller registry
+  and managed by a controller manager like any other controller. If the parent controller is
+  stopped, then all child controllers will be stopped and deregistered automatically. Each
+  controller can have only one parent. You can register multiple child controllers with the same base
+  record, but different name."
+  record-type)
+(defmulti register-child-controllers
+  "Registers multiple child controllers at once.
+   Their start lifecycle functions will be called synchronously."
+  record-type)
+(defmulti synchronize-child-controllers
+  "Receives map with controllers (and optional params) that should be 
+   registered. It will go through the currently registered (and potentially running)
+   controllers, and start, stop and deregister controllers as needed."
+  record-type)
+(defmulti deregister-child-controller
+  "Deregisters child controller. This will run stop lifecycle function for the controller."
+  record-type)
+(defmulti deregister-child-controllers
+  "Deregisters multiple (or all) child controllers.
+   Their stop lifecycle functions will be called synchronusly.
+   Optionally can receive list of controllers to deregister"
+  record-type)
+(defmulti get-children
+  "Returns a map with registered child controllers"
+  record-type)
+(defmulti get-parent
+  "Returns a name of the parent controller if one exists")
 
 
 (defmethod params :default [controller route-params] route-params)
@@ -207,3 +252,29 @@
      controller))
 (defmethod router :default [controller]
   (:router controller))
+(defmethod register-child-controller :default 
+  ([controller child-controller-name child-controller] 
+   (register-child-controller controller child-controller-name child-controller nil))
+  ([controller child-controller-name child-controller child-controller-params]
+   (register-child-controllers 
+    controller 
+    {child-controller-name {:controller child-controller
+                            :params child-controller-params}})))
+(defmethod register-child-controllers :default [controller child-controllers-to-register]
+  (let [register-child-controllers-fn (:keechma.controller-manager/register-child-controllers controller)]
+    (register-child-controllers-fn controller child-controllers-to-register)))
+(defmethod synchronize-child-controllers :default [controller child-controllers]
+  (let [synchronize-child-controllers-fn (:keechma.controller-manager/synchronize-child-controllers controller)]
+    (synchronize-child-controllers-fn controller child-controllers)))
+(defmethod deregister-child-controller :default [controller child-controller-name]
+  (deregister-child-controllers controller #{child-controller-name}))
+(defmethod deregister-child-controllers :default 
+  ([controller] (deregister-child-controllers controller (keys (get-children controller))))
+  ([controller children-to-deregister]
+   (let [deregister-child-controllers-fn (:keechma.controller-manager/deregister-child-controllers controller)]
+     (deregister-child-controllers-fn controller children-to-deregister))))
+(defmethod get-children :default [controller]
+  (let [get-children-fn (:keechma.controller-manager/get-children controller)]
+    (get-children-fn controller)))
+(defmethod get-parent :default [controller]
+  (::parent controller))

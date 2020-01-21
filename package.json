@@ -8,7 +8,7 @@
     "karma": "^0.13.22",
     "karma-chrome-launcher": "^0.2.3",
     "karma-cljs-test": "^0.1.0",
-    "syn": "^0.10.0"
+    "syn": "^0.14.1"
   },
   "dependencies": {
     "@cljs-oss/module-deps": "^1.1.1",

@@ -101,7 +101,7 @@
 (defrecord UIComponent [component-deps subscription-deps renderer]
   IUIComponent)
 
-(defn ^:private component-dep-graph [components]
+(defn component-dep-graph [components]
   (reduce-kv (fn [graph k v]
                (if-not (fn? v)
                  (let [component-deps (:component-deps v)]
@@ -110,13 +110,13 @@
                      (reduce #(dep/depend %1 k %2) graph component-deps)))
                  graph)) (dep/graph) components))
 
-(defn ^:private missing-component-deps [components]
+(defn missing-component-deps [components]
   (reduce-kv (fn [missing k v]
                (if (nil? v)
                  (conj missing k)
                  missing)) [] components))
 
-(defn ^:private resolve-component-aliases [components system]
+(defn resolve-component-aliases [components system]
   (reduce-kv 
    (fn [m k v]
      (if (keyword? v)
@@ -125,7 +125,7 @@
    {}
    components))
 
-(defn ^:private component-with-deps [component-key component system]
+(defn component-with-deps [component-key component system]
   (let [dep-keys (:component-deps component)]
     (if-not (empty? dep-keys)
       (let [components (resolve-component-aliases 
@@ -172,14 +172,14 @@
   "See [[resolve-dep]]"
   (partial resolve-dep :component-deps :components))
 
-(defn ^:private resolved-system [components sorted-keys]
+(defn resolved-system [components sorted-keys]
   (reduce (fn [system key]
             (let [component (get system key)]
               (if (fn? component)
                 (assoc system key component)
                 (assoc system key (component-with-deps key component system))))) components sorted-keys))
 
-(defn ^:private resolve-component-subscriptions [component subscriptions]
+(defn resolve-component-subscriptions [component subscriptions]
   (reduce (fn [c dep]
             (let [sub (get subscriptions dep)]
               (if (nil? sub)
@@ -187,18 +187,18 @@
                 (resolve-subscription-dep c dep sub))))
           component (or (:subscription-deps component) [])))
 
-(defn ^:private resolve-subscriptions [components subscriptions]
+(defn resolve-subscriptions [components subscriptions]
   (reduce-kv (fn [components k c]
                (assoc components k (resolve-component-subscriptions c subscriptions)))
              {} components))
 
-(defn ^:private assoc-name [components]
+(defn assoc-name [components]
   (reduce-kv (fn [components k c]
                (assoc components k (assoc c :name k))) {} components))
 
-(defn ^:private default-ctx-processor [])
+(defn default-ctx-processor [])
 
-(defn ^:private component->renderer 
+(defn component->renderer 
   ([parent component]
    (component->renderer nil parent component))
   ([component-key parent component]

@@ -49,3 +49,11 @@
         idx
         (recur (rest c) (inc idx)))
       nil)))
+
+
+(defn keechma-ex-info
+  ([message anomaly] (keechma-ex-info message anomaly {}))
+  ([message anomaly props]
+   (ex-info message (assoc props 
+                           :keechma.anomalies/category anomaly
+                           :keechma.anomalies/message message))))

@@ -41,7 +41,7 @@
                            :optimizations :none
                            :main keechma.test.core
                            :install-deps true
-                           :npm-deps {:syn "0.10.0"
+                           :npm-deps {:syn "0.14.1"
                                       :karma "^0.13.22"
                                       :karma-chrome-launcher "^0.2.2"
                                       :karma-cljs-test "^0.1.0"
