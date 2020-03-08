@@ -406,7 +406,7 @@
     - if the last value was not `nil` and the current value is not `nil` and these values are different - restart the controller (stop the current instance and start the new one)
 
   Controller manager also acts as a command router. Each time a command comes - through the `commands-chan`
-  the name of the command should look like this `[:controlnler-key :command-name]`. Controller manager will route the `:command-name` command to the appropriate controller based on the `:controller-key`. Controller key is the key under which the controller was registered in the `controllers` argument.
+  the name of the command should look like this `[:controller-key :command-name]`. Controller manager will route the `:command-name` command to the appropriate controller based on the `:controller-key`. Controller key is the key under which the controller was registered in the `controllers` argument.
   "
 
   [route-chan route-processor commands-chan app-db$ controllers reporter]
