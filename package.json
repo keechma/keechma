@@ -14,8 +14,8 @@
     "@cljs-oss/module-deps": "^1.1.1",
     "browser-resolve": "^1.11.2",
     "module-deps": "^4.1.1",
-    "react": "^16.9.0",
-    "react-dom": "^16.9.0",
-    "resolve": "^1.15.0"
+    "react": "^16.13.0",
+    "react-dom": "^16.13.0",
+    "resolve": "^1.15.1"
   }
 }

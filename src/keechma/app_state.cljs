@@ -1,5 +1,6 @@
 (ns keechma.app-state
-  (:require [reagent.core :as reagent :refer [cursor]]
+  (:require [reagent.core :as reagent]
+            [reagent.dom :as dom]
             [cljs.core.async :refer [put! close! chan timeout <!]]
             [keechma.ui-component :as ui]
             [keechma.controller-manager :as controller-manager]
@@ -197,9 +198,9 @@
 (defn mount-to-element! [state]
   (let [main-component (:main-component state) 
         container (:html-element state)]
-    (reagent/render-component (app-renderer state) container)
-    (add-stop-fn state (fn [s] 
-                         (reagent/unmount-component-at-node container)))))
+    (dom/render (app-renderer state) container)
+    (add-stop-fn state (fn [s]
+                         (dom/unmount-component-at-node container)))))
 
 (defn start-controllers [state]
   (let [router (:router state)
