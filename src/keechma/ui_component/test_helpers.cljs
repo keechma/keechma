@@ -2,6 +2,7 @@
   (:require [keechma.ui-component :as ui]
             [router.core :as router]
             [reagent.core :as r]
+            [reagent.dom :as rdom]
             [clojure.set :as set]
             [clojure.string :as str])
   (:require-macros [reagent.ratom :refer [reaction]]))
@@ -70,5 +71,5 @@
   ([container component] (render container component {}))
   ([container component initial-state]
    (let [mocked (mock-ctx component initial-state)]
-     (r/render [(mock-renderer mocked)] container)
+     (rdom/render [(mock-renderer mocked)] container)
      mocked)))

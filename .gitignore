@@ -16,3 +16,4 @@ pom.xml.asc
 tags
 checkouts
 yarn-error.log
+*.iml

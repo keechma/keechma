@@ -3,6 +3,7 @@
             [cljsjs.react.dom]
             [cljsjs.react]
             [reagent.core :as reagent]
+            [reagent.dom :as reagent-dom]
             [dommy.core :as dommy :refer-macros [sel1]]
             [cljs.core.async :refer [<! >! chan close! put! alts! timeout]]
             [keechma.ui-component :as ui]
@@ -90,7 +91,7 @@
         renderer (ui/renderer (assoc system :commands-chan commands-chan))
  
         [c unmount] (make-container)
-        _ (reagent/render-component [renderer] c)
+        _ (reagent-dom/render [renderer] c)
         button-node (sel1 c [:button])
         submit-node (sel1 c [:input])]
     (async done
@@ -127,7 +128,7 @@
         system (ui/system {:main component})
         renderer (ui/renderer (assoc system :commands-chan commands-chan))
         [c unmount] (make-container)]
-    (reagent/render-component [renderer] c)
+    (reagent-dom/render [renderer] c)
     (close! commands-chan)
     (unmount)))
 
@@ -147,7 +148,7 @@
         [c unmount] (make-container)]
     
     (async done
-           (reagent/render-component [renderer] c)
+           (reagent-dom/render [renderer] c)
            (go-loop []
              (let [cmd (<! commands-chan)]
                (swap! commands conj (first cmd))
