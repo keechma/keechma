@@ -2,7 +2,7 @@
 
 [![Clojars Project](https://img.shields.io/clojars/v/keechma.svg)](https://clojars.org/keechma)
 
-Keechma is a micro framework for Reagent written in ClojureScript. It gives you a set of utilites that allow you to build applications that have the following properties:
+Keechma is a micro framework for Reagent written in ClojureScript. It gives you a set of utilities that allow you to build applications that have the following properties:
 
 - **Deterministic and predictable behavior**
     + Based on the route, you can determine what the application's state will be
@@ -14,7 +14,7 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
 - **Loose coupling between components**
     + Communication is performed through `core.async` channels
 - **Automatic synchronization of entities' states**
-    + An entity is any data loaded into the app that has identity (e.g. `:id` column)
+    + An entity is any data loaded into the app that has an identity (e.g. `:id` column)
     + Entities are stored in the EntityDB
     + EntityDB propagates entity state to every place where that entity is displayed in the UI
 - **Enforced lifecycle (and memory safety)**
@@ -22,18 +22,18 @@ Keechma is a micro framework for Reagent written in ClojureScript. It gives you 
     + Automatically clean up stale data on route change
     + Automatically set up event listeners on route change (e.g. listener on the WebSocket)
     + Automatically tear down event listeners on route change
-- **Applications are first class citizens**
+- **Applications are first-class citizens**
     + Applications can be started and stopped
     + Applications can be passed around
-    + Applications can mount sub - applications
+    + Applications can mount sub-applicationsns
 - **UI components are decoupled and reusable**
     + UI components can declare it's dependencies
     + Dependencies are injected when the application is started
-    + Each component has it's own context
+    + Each component has own context
 - **No shared globals**
     + Router is bound to the application context
     + App state is bound to the application context
-    + Multiple apps can run at the same time, each with it's own state
+    + Multiple apps can run at the same time, each with own state
 
 ## Documentation
 
