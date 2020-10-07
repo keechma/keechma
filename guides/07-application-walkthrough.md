@@ -14,7 +14,7 @@ I want to point out that DoneJS implementation has more functionality (like serv
 
 Place-my-order app is a minimal implementation of the restaurant ordering service.
 
-Before we start I recommend you to either install the application locally (you can find the instructions [here](https://github.com/keechma/keechma-place-my-order)) or go to http://place-my-order.com and click around to get the feeling of how the application works.
+Before we start I recommend you to either install the application locally (you can find the instructions [here](https://github.com/keechma/keechma-place-my-order)) or go to http://www.place-my-order.com/ and click around to get the feeling of how the application works.
 
 ### High-level architecture overview
 
